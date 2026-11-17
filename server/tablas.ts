@@ -115,6 +115,8 @@ export const FilaGasto = z.object({
   fecha: fecha,
   tax_free: bandera,
   notas: opcional(texto(2000)),
+  /** Foto del ticket (tabla fotos). */
+  foto: opcional(texto(100)),
   ...comun,
 });
 

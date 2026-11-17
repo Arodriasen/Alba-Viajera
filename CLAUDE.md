@@ -118,3 +118,11 @@ Varios viajes (noviembre 2026):
 - Sugerencias hotel ⇄ El viaje (pastillas `.sugerencia`, nada de avisos): al meter un hotel sin fechas, `nochesSinHotel` /
   `nochesParaHotel` (noches sin hotel por ciudad de los días); en un día con hotel, `SugerenciaHotel` propone su ciudad y
   «Llegada a…» como título. Desplegables de ciudades = pastillas (`ChipsCiudades`, `SugerirCiudades`, `ciudadesPais.ts`).
+
+Conversor (`/conversor`, `ConversorPage.tsx`): moneda del viaje ⇄ €, con el cambio del día (editable a mano), importes
+rápidos (`importesRapidos`), cuánto devolvería el Tax Free y "Apuntarlo como gasto" (`/gasto/nuevo?importe=&moneda=`).
+Solo se entra desde Presupuesto (el usuario no lo quiere en Más ni en Hoy). No sale si la moneda es EUR. Cambio: Frankfurter v2 (`/v2/rates`, sin caché del navegador); el cambio sigue al que llegue salvo que se escriba a mano.
+
+Foto del ticket: `gastos.foto` (migración 0007), misma tabla `fotos` que la del día (`fotos.nueva(blob)` devuelve el
+nombre). La foto elegida se queda en el formulario hasta Guardar; al cambiarla, quitarla o borrar el gasto se `olvidar`
+la anterior. Borrar un viaje también se lleva las de los tickets.

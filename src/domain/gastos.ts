@@ -112,11 +112,33 @@ export interface Gasto {
   /** Compra con Tax Free (para el trámite del aeropuerto). */
   taxFree: boolean;
   notas?: string;
+  /** Foto del ticket (nombre en la tabla de fotos). */
+  foto?: string;
 }
 
 /** Pasa un importe a euros con el cambio "1 € = N (moneda)". */
 export function aEuros(importe: number, moneda: Moneda, porEuro: number): number {
   return moneda === 'EUR' ? importe : importe / porEuro;
+}
+
+/** Lo contrario: de euros a la moneda con el cambio "1 € = N (moneda)". */
+export function deEuros(euros: number, moneda: Moneda, porEuro: number): number {
+  return moneda === 'EUR' ? euros : euros * porEuro;
+}
+
+/** Redondea a una o dos cifras significativas "de precio" (873 → 900, 1.758 → 1.800). */
+function redondoDePrecio(n: number): number {
+  if (n <= 0) return 0;
+  const paso = 10 ** Math.max(0, Math.floor(Math.log10(n)) - 1);
+  return Math.round(n / paso) * paso;
+}
+
+/** Importes para tocar de un golpe en el conversor, en la moneda que se escribe. */
+export function importesRapidos(moneda: Moneda, porEuro: number | undefined): number[] {
+  if (moneda === 'EUR') return [5, 10, 20, 50, 100];
+  if (moneda === 'JPY') return [500, 1000, 3000, 5000, 10000];
+  if (!porEuro || porEuro <= 0) return [];
+  return [...new Set([5, 10, 20, 50, 100].map((e) => redondoDePrecio(e * porEuro)))];
 }
 
 export interface ResumenCategoria {

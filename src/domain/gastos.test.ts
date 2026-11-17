@@ -1,4 +1,4 @@
-import { aEuros, enMoneda, euros, eurosExactos, gastadoEl, yenes, leerPresupuesto, PRESUPUESTO_VACIO, resumir, type Gasto, type Presupuesto } from './gastos';
+import { aEuros, deEuros, importesRapidos, enMoneda, euros, eurosExactos, gastadoEl, yenes, leerPresupuesto, PRESUPUESTO_VACIO, resumir, type Gasto, type Presupuesto } from './gastos';
 
 const g = (id: string, extra: Partial<Gasto>): Gasto => ({
   id,
@@ -84,5 +84,22 @@ describe('presupuesto', () => {
     expect(euros(1249.6)).toBe('1.250 €');
     expect(eurosExactos(13.6537)).toBe('13,65 €');
     expect(yenes(2400)).toBe('¥2.400');
+  });
+});
+
+describe('conversor', () => {
+  it('pasa de euros a la moneda y vuelta', () => {
+    expect(deEuros(10, 'JPY', 175)).toBe(1750);
+    expect(aEuros(deEuros(10, 'JPY', 175), 'JPY', 175)).toBe(10);
+    expect(deEuros(10, 'EUR', 175)).toBe(10);
+  });
+
+  it('propone importes redondos para tocar', () => {
+    expect(importesRapidos('JPY', 175)).toEqual([500, 1000, 3000, 5000, 10000]);
+    expect(importesRapidos('EUR', undefined)).toEqual([5, 10, 20, 50, 100]);
+    // 1 € = 1,08 $ → 5,4 / 10,8 / 21,6 / 54 / 108 redondeados.
+    expect(importesRapidos('USD', 1.08)).toEqual([5, 11, 22, 54, 110]);
+    expect(importesRapidos('KRW', 1450)).toEqual([7300, 15000, 29000, 73000, 150000]);
+    expect(importesRapidos('XXX', undefined)).toEqual([]);
   });
 });

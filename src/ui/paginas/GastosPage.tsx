@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { tiene } from '@/domain/config';
@@ -26,6 +26,7 @@ import { Cabecera, Cargando } from '../componentes/comunes';
 import { Campo, confirmarBorrado, Opciones } from '../componentes/formulario';
 import { Icono } from '../componentes/Icono';
 import { CampoFecha } from '../componentes/CampoFecha';
+import { useUrlFoto, VisorFoto } from '../componentes/FotoDelDia';
 import { TarjetaTaxFree } from './TaxFreePage';
 
 /** El cambio del día (o el último guardado) de esa moneda; undefined si no hay ninguno. */
@@ -84,6 +85,11 @@ export function GastosPage() {
         <Link to="/gasto/nuevo" className="boton shu grande">
           <Icono nombre="mas" tamano={20} /> Añadir gasto
         </Link>
+        {config.moneda !== 'EUR' && (
+          <Link to="/conversor" className="boton claro">
+            <Icono nombre="conversor" tamano={18} /> Conversor {simboloMoneda(config.moneda)} ⇄ €
+          </Link>
+        )}
 
         {tiene(config, 'taxfree') && <TarjetaTaxFree />}
 
@@ -135,7 +141,7 @@ export function GastosPage() {
         {config.moneda !== 'EUR' && (
           <p className="muy-pequeno secundario centrado" style={{ margin: 0 }}>
             {cambio
-              ? `Cambio ${cambio.guardado ? 'guardado' : 'de hoy'}: ${cambioTexto(cambio)} (${fechaCorta(cambio.fecha)}). `
+              ? `Cambio ${cambio.guardado ? 'guardado (sin conexión)' : 'último publicado'}: ${cambioTexto(cambio)} (${fechaCorta(cambio.fecha)}). `
               : `No hay cambio automático para ${config.moneda}: se escribe en cada gasto. `}
             Cada gasto guarda el cambio del día en que se apuntó.
           </p>
@@ -156,6 +162,11 @@ function FilaGasto({ g }: { g: Gasto }) {
           {g.taxFree && ' · Tax Free'}
         </span>
       </span>
+      {g.foto && (
+        <span className="secundario" title="Con foto del ticket" aria-label="Con foto del ticket">
+          <Icono nombre="recibo" tamano={15} />
+        </span>
+      )}
       <span className="negrita">{eurosExactos(g.euros)}</span>
       <Icono nombre="chevron" tamano={16} />
     </Link>
@@ -192,6 +203,12 @@ interface Form {
   notas: string;
   /** 1 € = N (moneda) con el que se pasa a euros. */
   cambio: string;
+  /** El cambio lo ha escrito la persona: ya no se sustituye por el que llegue de la API. */
+  cambioAMano?: boolean;
+  /** Foto del ticket ya guardada (su nombre). */
+  foto?: string;
+  /** Foto del ticket elegida ahora; se guarda al pulsar Guardar. */
+  fotoNueva?: Blob;
 }
 
 const numero = (t: string) => {
@@ -204,7 +221,7 @@ export function EditarGastoPage() {
   const { id } = useParams();
   const [busqueda] = useSearchParams();
   const nuevo = !id || id === 'nuevo';
-  const { viaje, hoy, config } = useAlba();
+  const { viaje, hoy, config, fotos } = useAlba();
   const navegar = useNavigate();
   const cambioViaje = useCambio(config.moneda);
   const cargado = useConsulta(async ({ viaje: v }) => ({ g: nuevo ? undefined : await v.gasto(id!), presupuesto: await v.presupuesto() }), [id]);
@@ -229,15 +246,18 @@ export function EditarGastoPage() {
       fecha: g?.fecha ?? busqueda.get('fecha') ?? hoy,
       taxFree: g?.taxFree ?? busqueda.get('taxfree') === '1',
       notas: g?.notas ?? '',
+      foto: g?.foto,
       // Un gasto ya apuntado conserva su cambio; uno nuevo usa el de hoy.
       cambio: textoCambio(g && g.moneda !== 'EUR' && g.euros > 0 ? g.importe / g.euros : moneda === config.moneda ? cambioViaje?.porEuro : undefined),
     });
   }, [cargado, form, busqueda, hoy, config, cambioViaje]);
 
-  // Al llegar el cambio de hoy (o al cambiar de moneda) en un gasto nuevo, se pone si no hay otro escrito.
+  // En un gasto nuevo el cambio sigue al último que llegue (primero el guardado en el móvil y luego el de
+  // la API), salvo que se haya escrito a mano.
   useEffect(() => {
-    if (!form || !nuevo || form.moneda === 'EUR' || form.cambio || !cambioForm) return;
-    setForm({ ...form, cambio: textoCambio(cambioForm.porEuro) });
+    if (!form || !nuevo || form.moneda === 'EUR' || form.cambioAMano || !cambioForm) return;
+    const t = textoCambio(cambioForm.porEuro);
+    if (form.cambio !== t) setForm({ ...form, cambio: t });
   }, [form, nuevo, cambioForm]);
 
   if (!form || !cargado) return <Cargando />;
@@ -272,6 +292,9 @@ export function EditarGastoPage() {
             const elementoId = busqueda.get('elemento');
             const elemento = elementoId ? await viaje.elemento(elementoId) : undefined;
             if (elemento) await viaje.guardarElemento({ ...elemento, hecho: true, gasto: gastoId });
+            // Primero la foto nueva (el motor la sube antes que el gasto); la que había se olvida después.
+            const foto = form.fotoNueva ? await fotos.nueva(form.fotoNueva) : form.foto;
+            const anterior = cargado.g?.foto;
             await viaje.guardarGasto({
               id: gastoId,
               concepto: form.concepto,
@@ -282,7 +305,9 @@ export function EditarGastoPage() {
               fecha: form.fecha,
               taxFree: form.taxFree,
               notas: form.notas,
+              foto,
             });
+            if (anterior && anterior !== foto) await fotos.olvidar(anterior);
             navegar(-1);
           }}
         >
@@ -303,7 +328,7 @@ export function EditarGastoPage() {
             {monedas.length > 1 && (
               <Opciones
                 valor={form.moneda}
-                alCambiar={(moneda) => cambiar({ moneda, cambio: '' })}
+                alCambiar={(moneda) => cambiar({ moneda, cambio: '', cambioAMano: false })}
                 opciones={monedas.map((m) => ({ valor: m, texto: m === 'EUR' ? 'Euros €' : `${m} ${simboloMoneda(m)}` }))}
               />
             )}
@@ -319,7 +344,7 @@ export function EditarGastoPage() {
                     aria-label={`${form.moneda} por euro`}
                     placeholder="?"
                     value={form.cambio}
-                    onChange={(e) => cambiar({ cambio: e.target.value.replace(/[^\d.,]/g, '') })}
+                    onChange={(e) => cambiar({ cambio: e.target.value.replace(/[^\d.,]/g, ''), cambioAMano: true })}
                   />{' '}
                   {simboloMoneda(form.moneda)}
                 </span>
@@ -371,6 +396,14 @@ export function EditarGastoPage() {
             <textarea className="entrada" rows={2} value={form.notas} onChange={(e) => cambiar({ notas: e.target.value })} />
           </Campo>
 
+          <FotoTicket
+            foto={form.foto}
+            nueva={form.fotoNueva}
+            titulo={form.concepto.trim() || 'Ticket'}
+            alElegir={(fotoNueva) => cambiar({ fotoNueva })}
+            alQuitar={() => cambiar({ foto: undefined, fotoNueva: undefined })}
+          />
+
           <button className="boton shu" disabled={!valido}>
             Guardar
           </button>
@@ -381,6 +414,7 @@ export function EditarGastoPage() {
               onClick={async () => {
                 if (!confirmarBorrado(`«${form.concepto}»`)) return;
                 await viaje.borrarGasto(cargado.g!.id);
+                if (cargado.g!.foto) await fotos.olvidar(cargado.g!.foto);
                 navegar(-1);
               }}
             >
@@ -401,7 +435,7 @@ interface FilaCategoria extends Omit<CategoriaPresupuesto, 'previsto'> {
 
 /** Las categorías del presupuesto: añadir, renombrar, cambiar icono y color, lo previsto y quitar. */
 export function EditarPresupuestoPage() {
-  const { viaje } = useAlba();
+  const { viaje, fotos } = useAlba();
   const navegar = useNavigate();
   const [filas, setFilas] = useState<FilaCategoria[]>();
   const [abierta, setAbierta] = useState<string>();
@@ -432,7 +466,10 @@ export function EditarPresupuestoPage() {
       const destino = f.borrada!.destino;
       for (const g of gastos.filter((x) => x.categoria === f.id)) {
         if (destino) await viaje.guardarGasto({ ...g, categoria: destino });
-        else await viaje.borrarGasto(g.id);
+        else {
+          await viaje.borrarGasto(g.id);
+          if (g.foto) await fotos.olvidar(g.foto);
+        }
       }
     }
     await viaje.guardarPresupuesto({
@@ -585,3 +622,81 @@ export function EditarPresupuestoPage() {
   );
 }
 
+
+/**
+ * Foto del ticket del gasto: hacerla o subirla, verla en grande, cambiarla o quitarla. Nada se guarda hasta
+ * pulsar Guardar en el gasto (así, si se sale sin guardar, no queda una foto suelta).
+ */
+function FotoTicket({
+  foto,
+  nueva,
+  titulo,
+  alElegir,
+  alQuitar,
+}: {
+  foto?: string;
+  nueva?: Blob;
+  titulo: string;
+  alElegir: (b: Blob) => void;
+  alQuitar: () => void;
+}) {
+  const camara = useRef<HTMLInputElement>(null);
+  const galeria = useRef<HTMLInputElement>(null);
+  const [grande, setGrande] = useState(false);
+  const guardada = useUrlFoto(nueva ? undefined : foto);
+  const [previa, setPrevia] = useState<string>();
+  useEffect(() => {
+    if (!nueva) return setPrevia(undefined);
+    const u = URL.createObjectURL(nueva);
+    setPrevia(u);
+    return () => URL.revokeObjectURL(u);
+  }, [nueva]);
+  const url = nueva ? previa : guardada;
+  const hay = Boolean(nueva || foto);
+
+  const alCambiar = (e: ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = '';
+    if (archivo) alElegir(archivo);
+  };
+
+  return (
+    <div className={`tarjeta ${hay ? 'foto-compacta' : 'foto-vacia'}`}>
+      <input ref={camara} type="file" accept="image/*" capture="environment" hidden onChange={alCambiar} />
+      <input ref={galeria} type="file" accept="image/*" hidden onChange={alCambiar} />
+      {!hay ? (
+        <>
+          <p className="etiqueta">Foto del ticket</p>
+          <div className="botones">
+            <button type="button" className="boton claro pequeno" onClick={() => camara.current?.click()}>
+              <Icono nombre="camara" tamano={18} /> Hacerla
+            </button>
+            <button type="button" className="boton claro pequeno" onClick={() => galeria.current?.click()}>
+              <Icono nombre="galeria" tamano={18} /> Subirla
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="fila-foto">
+          <button type="button" className="miniatura-foto" onClick={() => url && setGrande(true)} aria-label="Ver el ticket en grande">
+            {url && <img src={url} alt={`Ticket de ${titulo}`} />}
+          </button>
+          <span className="negrita" style={{ flex: 1 }}>
+            Foto del ticket
+            {nueva && <span className="muy-pequeno secundario" style={{ display: 'block', fontWeight: 400 }}>Se guarda al pulsar Guardar</span>}
+          </span>
+          <button type="button" className="accion-foto" onClick={() => camara.current?.click()} aria-label="Hacer otra foto">
+            <Icono nombre="camara" tamano={20} />
+          </button>
+          <button type="button" className="accion-foto" onClick={() => galeria.current?.click()} aria-label="Cambiar por otra de la galería">
+            <Icono nombre="galeria" tamano={20} />
+          </button>
+          <button type="button" className="accion-foto peligro" aria-label="Quitar la foto del ticket" onClick={alQuitar}>
+            <Icono nombre="papelera" tamano={20} />
+          </button>
+        </div>
+      )}
+      {grande && url && <VisorFoto url={url} titulo={titulo} alCerrar={() => setGrande(false)} />}
+    </div>
+  );
+}

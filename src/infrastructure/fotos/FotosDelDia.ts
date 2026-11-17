@@ -55,13 +55,21 @@ export class FotosDelDia {
     private readonly alCambiar: () => void,
   ) {}
 
-  /** Pone (o cambia) la foto del día. */
-  async poner(fecha: Fecha, archivo: Blob): Promise<void> {
+  /**
+   * Guarda una foto nueva (comprimida) para subirla y devuelve su nombre. Quien la use la apunta en su
+   * fila (el día, el ticket de un gasto…): el motor sube antes las fotos, así al otro móvil le llega ya con ella.
+   */
+  async nueva(archivo: Blob): Promise<string> {
     const blob = await comprimir(archivo);
     const nombre = `${crypto.randomUUID()}.jpg`;
-    // Primero la foto: el motor la sube antes que el día, así al otro móvil le llega ya con ella.
     await this.almacen.ponerFoto({ nombre, estado: 'subir', blob });
     this.urls.set(nombre, URL.createObjectURL(blob));
+    return nombre;
+  }
+
+  /** Pone (o cambia) la foto del día. */
+  async poner(fecha: Fecha, archivo: Blob): Promise<void> {
+    const nombre = await this.nueva(archivo);
     const dia = await this.viaje.dia(fecha);
     const anterior = dia?.foto;
     await this.viaje.guardarDia(dia ? { ...dia, foto: nombre } : { fecha, titulo: 'Día libre', plan: [], foto: nombre });

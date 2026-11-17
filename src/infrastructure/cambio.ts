@@ -41,12 +41,15 @@ export function cambioDeHoy(moneda: string): Promise<Cambio | undefined> {
   if (!p) {
     p = (async () => {
       try {
-        const r = await fetch(`https://api.frankfurter.dev/v1/latest?base=EUR&symbols=${encodeURIComponent(moneda)}`);
+        // v2: la v1 está obsoleta y se quedaba en el cambio del día anterior. Sin caché del navegador
+        // (la API pide guardarla horas): así, al abrir, siempre es el último publicado.
+        const r = await fetch(`https://api.frankfurter.dev/v2/rates?base=EUR&quotes=${encodeURIComponent(moneda)}`, { cache: 'no-store' });
         if (!r.ok) throw new Error(String(r.status));
-        const j = (await r.json()) as { date: string; rates: Record<string, number> };
-        const porEuro = j.rates[moneda];
-        if (typeof porEuro !== 'number') throw new Error('Moneda sin cambio del BCE');
-        const c: Cambio = { moneda, porEuro, fecha: j.date, guardado: false };
+        const j = (await r.json()) as { date: string; quote: string; rate: number }[];
+        const fila = Array.isArray(j) ? j.find((x) => x.quote === moneda) : undefined;
+        const porEuro = fila?.rate;
+        if (typeof porEuro !== 'number' || !(porEuro > 0) || typeof fila?.date !== 'string') throw new Error('Moneda sin cambio');
+        const c: Cambio = { moneda, porEuro, fecha: fila.date, guardado: false };
         try {
           localStorage.setItem(clave(moneda), JSON.stringify(c));
         } catch {

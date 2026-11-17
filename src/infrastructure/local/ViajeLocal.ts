@@ -80,6 +80,7 @@ function aGasto(f: FilaLocal): Gasto {
     fecha: String(f.fecha),
     taxFree: f.tax_free === 1,
     notas: str(f.notas),
+    foto: str(f.foto),
   };
 }
 
@@ -297,6 +298,7 @@ export class ViajeLocal implements ViajeRepositorio {
       fecha: g.fecha,
       tax_free: g.taxFree ? 1 : 0,
       notas: nulo(g.notas),
+      foto: nulo(g.foto),
     });
   }
   borrarGasto(id: string) {

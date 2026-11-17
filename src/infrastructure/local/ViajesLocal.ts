@@ -38,7 +38,8 @@ export class ViajesLocal implements ViajesRepositorio {
     for (const tabla of TABLAS) {
       const suyas = (await this.almacen.todas(tabla)).filter((f) => !f.borrado && esDelViaje(f.id, viaje));
       for (const f of suyas) {
-        if (tabla === 'dias' && typeof f.foto === 'string' && f.foto) fotos.push(f.foto);
+        // Las fotos del día y las de los tickets de los gastos.
+        if ((tabla === 'dias' || tabla === 'gastos') && typeof f.foto === 'string' && f.foto) fotos.push(f.foto);
         await escribirFila(this.almacen, tabla, { id: f.id }, 1);
       }
     }

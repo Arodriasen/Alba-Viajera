@@ -8,6 +8,7 @@ import { NuevoViajePage, ViajesPage } from './ui/paginas/ViajesPage';
 import { AjustesPage } from './ui/paginas/AjustesPage';
 import { AlbumPage } from './ui/paginas/AlbumPage';
 import { AlojamientoPage, AlojamientosPage, EditarAlojamientoPage } from './ui/paginas/AlojamientosPage';
+import { ConversorPage } from './ui/paginas/ConversorPage';
 import { EditarGastoPage, EditarPresupuestoPage, GastosPage } from './ui/paginas/GastosPage';
 import { HoyPage } from './ui/paginas/HoyPage';
 import { MasPage } from './ui/paginas/MasPage';
@@ -63,6 +64,7 @@ export default function App() {
         <Route path="/gasto/nuevo" element={<EditarGastoPage />} />
         <Route path="/gasto/:id" element={<EditarGastoPage />} />
         <Route path="/taxfree" element={<TaxFreePage />} />
+        <Route path="/conversor" element={<ConversorPage />} />
         <Route path="/tiempo" element={<TiempoPage />} />
         <Route path="/avisos" element={<AvisosPage />} />
         <Route path="/frases/:categoria" element={<FrasesPage />} />

@@ -1,6 +1,8 @@
 import {
   Activity,
   ArrowLeft,
+  ArrowLeftRight,
+  ArrowUpDown,
   BadgePercent,
   BedDouble,
   CalendarDays,
@@ -110,6 +112,8 @@ const ICONOS = {
   // Presupuesto
   cartera: Wallet,
   recibo: Receipt,
+  conversor: ArrowLeftRight,
+  intercambiar: ArrowUpDown,
   taxFree: BadgePercent,
   vuelos: Plane,
   alojamiento: BedDouble,
