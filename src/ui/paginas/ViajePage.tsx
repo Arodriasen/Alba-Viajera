@@ -213,6 +213,7 @@ function DiaOrganizar({ fecha, dia, hoteles }: { fecha: string; dia: Dia | undef
       plan: v.plan.split('\n'),
       notas: actual?.notas,
       foto: actual?.foto,
+      ultimoTren: actual?.ultimoTren,
     });
   });
   const sugerido = textoSinPlan(hoteles);
@@ -366,13 +367,13 @@ export function EditarDiaPage() {
   // Envuelto en un objeto: así "aún cargando" (undefined) no se confunde con "ese día no existe".
   const cargado = useConsulta(async ({ viaje: v }) => ({ dia: await v.dia(fecha), alojamientos: await v.alojamientos() }), [fecha]);
   const dia = cargado?.dia;
-  const [form, setForm] = useState<{ titulo: string; ciudad: string; plan: string; notas: string }>();
+  const [form, setForm] = useState<{ titulo: string; ciudad: string; plan: string; notas: string; ultimoTren: string }>();
   const guardarCiudad = useGuardarCiudad();
 
   useEffect(() => {
     if (form || !cargado) return;
     const d = cargado.dia;
-    setForm({ titulo: d?.titulo ?? '', ciudad: d?.ciudad ?? '', plan: d?.plan.join('\n') ?? '', notas: d?.notas ?? '' });
+    setForm({ titulo: d?.titulo ?? '', ciudad: d?.ciudad ?? '', plan: d?.plan.join('\n') ?? '', notas: d?.notas ?? '', ultimoTren: d?.ultimoTren ?? '' });
   }, [cargado, form]);
 
   if (!form) return <Cargando />;
@@ -384,6 +385,7 @@ export function EditarDiaPage() {
       plan: form.plan.split('\n'),
       notas: form.notas,
       foto: dia?.foto,
+      ultimoTren: form.ultimoTren || undefined,
     };
     await guardarCiudad(form.ciudad);
     await viaje.guardarDia(nuevo);
@@ -423,6 +425,16 @@ export function EditarDiaPage() {
           </Campo>
           <Campo etiqueta="Notas">
             <textarea className="entrada" rows={3} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
+          </Campo>
+          <Campo etiqueta="Último tren al hotel" ayuda="Opcional: miradlo en Google Maps o NAVITIME. Sale en Hoy desde 3 h antes, con aviso la última hora.">
+            <div className="fila-ciudad">
+              <input className="entrada" type="time" value={form.ultimoTren} onChange={(e) => setForm({ ...form, ultimoTren: e.target.value })} />
+              {form.ultimoTren && (
+                <button type="button" className="accion-foto peligro" aria-label="Quitar la hora del último tren" onClick={() => setForm({ ...form, ultimoTren: '' })}>
+                  <Icono nombre="papelera" tamano={20} />
+                </button>
+              )}
+            </div>
           </Campo>
           <button className="boton shu">Guardar</button>
           {dia && (

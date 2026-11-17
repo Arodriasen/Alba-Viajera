@@ -16,6 +16,8 @@ export interface Dia {
   plan: string[];
   notas?: string;
   foto?: string;
+  /** Hora del último tren de vuelta al hotel ("HH:MM"; de madrugada = ya del día siguiente). */
+  ultimoTren?: string;
 }
 
 export type EstadoAlojamiento = 'reservado' | 'pendiente' | 'cancelar' | 'cancelado';

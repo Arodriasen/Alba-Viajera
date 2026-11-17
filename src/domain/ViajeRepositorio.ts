@@ -1,4 +1,5 @@
 import type { ConfigViaje } from './config';
+import type { Consejos } from './consejos';
 import type { Frase, TraduccionSerie } from './frases';
 import type { Elemento } from './listas';
 import type { Gasto, Presupuesto } from './gastos';
@@ -50,6 +51,9 @@ export interface ViajeRepositorio {
   traduccionFrases(): Promise<TraduccionSerie | undefined>;
   guardarTraduccionFrases(t: TraduccionSerie): Promise<void>;
   guardarPresupuesto(p: Presupuesto): Promise<void>;
+  /** Notas de Japón (cambio de hotel, Suica): las de serie salvo que las hayáis cambiado. */
+  consejos(): Promise<Consejos>;
+  guardarConsejos(c: Consejos): Promise<void>;
 
   /** Elementos de las listas propias (de una o de todas). */
   elementos(lista?: string): Promise<Elemento[]>;

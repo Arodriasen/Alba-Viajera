@@ -69,7 +69,12 @@ export interface ConfigViaje {
   vueltaFecha: Fecha;
   horaVuelta: string;
   /** Datos de los vuelos (todo opcional: vacío = no se enseña). */
-  vuelos: { ida: InfoVuelo; vuelta: InfoVuelo };
+  vuelos: {
+    ida: InfoVuelo;
+    vuelta: InfoVuelo;
+    /** Cuántas horas antes de cada vuelo se abre la facturación online (la tarjeta del vuelo sale en Hoy desde entonces). */
+    facturacionHoras: number;
+  };
   jrPass: { inicio: Fecha; dias: number };
   parques: Record<IdParque, ParqueConfig>;
   ciudades: CiudadConfig[];
@@ -93,7 +98,7 @@ export const CONFIG_POR_DEFECTO: ConfigViaje = {
   horaSalida: '20:20',
   vueltaFecha: '2027-02-01',
   horaVuelta: '22:10',
-  vuelos: { ida: VUELO_VACIO, vuelta: VUELO_VACIO },
+  vuelos: { ida: VUELO_VACIO, vuelta: VUELO_VACIO, facturacionHoras: 24 },
   jrPass: { inicio: '2027-01-22', dias: 7 },
   parques: {
     tdl: {
@@ -136,6 +141,16 @@ function leerSalida(v: unknown): ConfigViaje['salida'] {
 
 /** ¿Tiene este viaje ese apartado? */
 export const tiene = (c: ConfigViaje, a: Apartado) => c.apartados.includes(a);
+
+function leerVuelos(v: unknown): ConfigViaje['vuelos'] {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  const h = o.facturacionHoras;
+  return {
+    ida: leerVuelo(o.ida),
+    vuelta: leerVuelo(o.vuelta),
+    facturacionHoras: typeof h === 'number' && Number.isFinite(h) && h >= 1 && h <= 168 ? Math.round(h) : 24,
+  };
+}
 
 function leerVuelo(v: unknown): InfoVuelo {
   const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
@@ -202,7 +217,7 @@ export function leerConfig(json: string | undefined): ConfigViaje {
     horaSalida: hora(v.horaSalida, d.horaSalida),
     vueltaFecha: fecha(v.vueltaFecha, d.vueltaFecha),
     horaVuelta: hora(v.horaVuelta, d.horaVuelta),
-    vuelos: { ida: leerVuelo((v.vuelos as Record<string, unknown> | undefined)?.ida), vuelta: leerVuelo((v.vuelos as Record<string, unknown> | undefined)?.vuelta) },
+    vuelos: leerVuelos(v.vuelos),
     jrPass: { inicio: fecha(jr.inicio, d.jrPass.inicio), dias },
     parques: Object.fromEntries(
       (Object.keys(d.parques) as IdParque[]).map((id) => [

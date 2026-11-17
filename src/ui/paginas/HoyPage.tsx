@@ -31,11 +31,13 @@ import { EnlaceParque } from '../componentes/EnlaceParque';
 import { FotoDelDia } from '../componentes/FotoDelDia';
 import { Icono } from '../componentes/Icono';
 import { PortadaDia } from '../componentes/PortadaDia';
-import { CuentaAtras, RelojDestino, Restante } from '../componentes/tiempo';
+import { CuentaAtras, RelojDestino, Restante, useMinuto } from '../componentes/tiempo';
 import { TarjetaGastosHoy } from './GastosPage';
 import { TarjetaTaxFree } from './TaxFreePage';
 import { ResumenViaje } from './ResumenViaje';
 import { TarjetaVuelo } from '../componentes/TarjetaVuelo';
+import { TarjetaConsejos } from '../componentes/TarjetaConsejos';
+import { cambioDeHotel, diasSuica, facturacionAbierta, ultimoTrenPendiente } from '@/domain/consejos';
 
 export function HoyPage() {
   const { hoy, simulando, config } = useAlba();
@@ -63,7 +65,10 @@ export function HoyPage() {
 }
 
 function Antes() {
-  const { config } = useAlba();
+  const { config, hoy, simulando } = useAlba();
+  const ahoraReal = useMinuto();
+  // Con ?hoy= simulado, "ahora" es esa fecha a la misma hora de casa.
+  const ahora = simulando ? instanteDe(hoy, horaEn(ahoraReal, config.zonaOrigen), config) : ahoraReal;
   const datos = useConsulta(async ({ viaje }) => ({ reservas: await viaje.reservas(), alojamientos: await viaje.alojamientos() }), []);
   if (!datos) return <Cargando />;
   const compras = porComprar(datos.reservas);
@@ -87,7 +92,7 @@ function Antes() {
         {tiene(config, 'tiempo') && <ChipTiempo ciudad={config.ciudades[0]?.nombre} texto={`${config.ciudades[0]?.nombre ?? config.destino} ahora:`} />}
       </Portada>
 
-      <TarjetaVuelo tramo="ida" siHayDatos />
+      {facturacionAbierta('ida', ahora, config) && <TarjetaVuelo tramo="ida" facturacion />}
 
       {tiene(config, 'reservas') && conVenta.length > 0 && (
         <section className="seccion">
@@ -145,11 +150,13 @@ function Antes() {
 
 function Durante({ fecha, dia, total }: { fecha: Fecha; dia: number; total: number }) {
   const { simulando, config } = useAlba();
+  useMinuto(); // el último tren y la facturación cambian con la hora
   const [destino, setDestino] = useState('');
   const manana = sumarDias(fecha, 1);
   const datos = useConsulta(
     async ({ viaje }) => ({
       dia: await viaje.dia(fecha),
+      ayer: await viaje.dia(sumarDias(fecha, -1)),
       manana: await viaje.dia(manana),
       reservas: await viaje.reservas(),
       alojamientos: await viaje.alojamientos(),
@@ -168,6 +175,9 @@ function Durante({ fecha, dia, total }: { fecha: Fecha; dia: number; total: numb
   const ahoraReal = new Date();
   const ahora = simulando ? instanteDe(fecha, horaEn(ahoraReal, config.zona), config) : ahoraReal;
   const proximo = proximoConHora(datos.reservas, datos.trayectos, ahora, config);
+  const ultimoTren = ultimoTrenPendiente([datos.ayer, datos.dia], ahora, config);
+  const cambioHoy = cambioDeHotel(datos.alojamientos, fecha);
+  const cambioManana = cambioDeHotel(datos.alojamientos, manana);
 
   return (
     <>
@@ -191,8 +201,29 @@ function Durante({ fecha, dia, total }: { fecha: Fecha; dia: number; total: numb
       </PortadaDia>
 
       {tiene(config, 'avisos') && <FranjaAvisos ciudad={ciudadHoy} />}
-      {fecha === config.inicio && <TarjetaVuelo tramo="ida" />}
-      {fecha === config.vueltaFecha && <TarjetaVuelo tramo="vuelta" />}
+      {fecha === config.inicio && <TarjetaVuelo tramo="ida" facturacion={facturacionAbierta('ida', ahora, config)} />}
+      {(fecha === config.vueltaFecha || facturacionAbierta('vuelta', ahora, config)) && <TarjetaVuelo tramo="vuelta" facturacion={facturacionAbierta('vuelta', ahora, config)} />}
+
+      {ultimoTren && (
+        <div className={`tarjeta proximo ${ultimoTren.urgente ? 'urgente' : 'tranquilo'}`}>
+          <Icono nombre="tren" tamano={22} />
+          <span className="texto">
+            <span className="etiqueta">Último tren al hotel · {ultimoTren.hora}</span>
+            <span className="negrita">{ultimoTren.urgente ? '¡Queda menos de una hora!' : 'Para no quedaros sin tren'}</span>
+          </span>
+          <span className="cuando">
+            en <Restante hasta={ultimoTren.cuando} desfase={ahora.getTime() - ahoraReal.getTime()} />
+          </span>
+        </div>
+      )}
+
+      {cambioManana && (
+        <TarjetaConsejos tipo="cambioHotel" icono="equipaje" titulo="Mañana cambiáis de hotel" detalle={`De ${cambioManana.salida.nombre} a ${cambioManana.llegada.nombre}`} />
+      )}
+      {cambioHoy && (
+        <TarjetaConsejos tipo="cambioHotel" icono="equipaje" titulo="Hoy cambiáis de hotel" detalle={`De ${cambioHoy.salida.nombre} a ${cambioHoy.llegada.nombre}`} />
+      )}
+      {diasSuica(config, datos.alojamientos, datos.trayectos).includes(fecha) && <TarjetaConsejos tipo="suica" icono="tren" titulo="Suica y trenes" />}
       {tiene(config, 'tiempo') && <ConsejoTiempo ciudad={ciudadHoy} />}
 
       {proximo && (

@@ -188,8 +188,25 @@ export function AjustesPage() {
                 </div>
               );
             })}
+            <Campo etiqueta="La facturación online abre" ayuda="Horas antes de cada vuelo (mirad vuestra reserva). Desde entonces, el vuelo sale en Hoy.">
+              <span className="euros-entrada">
+                <input
+                  className="entrada"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={168}
+                  value={form.vuelos.facturacionHoras}
+                  onChange={(e) => {
+                    const h = Number(e.target.value);
+                    if (Number.isFinite(h) && h >= 1 && h <= 168) cambiar({ vuelos: { ...form.vuelos, facturacionHoras: Math.round(h) } });
+                  }}
+                />
+                <span>h antes</span>
+              </span>
+            </Campo>
             <p className="muy-pequeno secundario" style={{ margin: 0 }}>
-              Opcional. Se ve en Hoy antes de salir y el día de cada vuelo, con un enlace al estado del vuelo.
+              Número, terminal y aerolínea son opcionales. En Hoy, el vuelo sale cuando se abre la facturación y el día del vuelo, con un enlace a su estado.
             </p>
           </section>
 

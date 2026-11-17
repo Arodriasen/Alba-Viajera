@@ -33,6 +33,8 @@ export const FilaDia = z.object({
   notas: opcional(texto(10_000)),
   /** Nombre de la foto del día (tabla fotos). */
   foto: opcional(texto(100)),
+  /** Último tren de vuelta al hotel ("HH:MM"). */
+  ultimo_tren: opcional(texto(5)),
   ...comun,
 });
 

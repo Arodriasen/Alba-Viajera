@@ -6,8 +6,9 @@ import { Icono } from './Icono';
 /**
  * El vuelo de ida o de vuelta: número, aerolínea, terminal, a qué hora estar en el aeropuerto y el enlace a su
  * estado. Con `siHayDatos`, no sale nada si en Ajustes no se ha escrito ni número, ni aerolínea, ni terminal.
+ * `facturacion`: la facturación online ya está abierta (se dice en la tarjeta).
  */
-export function TarjetaVuelo({ tramo, siHayDatos = false }: { tramo: 'ida' | 'vuelta'; siHayDatos?: boolean }) {
+export function TarjetaVuelo({ tramo, siHayDatos = false, facturacion = false }: { tramo: 'ida' | 'vuelta'; siHayDatos?: boolean; facturacion?: boolean }) {
   const { config } = useAlba();
   const v = config.vuelos[tramo];
   const hayDatos = Boolean(v.numero || v.aerolinea || v.terminal);
@@ -29,6 +30,7 @@ export function TarjetaVuelo({ tramo, siHayDatos = false }: { tramo: 'ida' | 'vu
           {tramo === 'ida' ? 'Vuelo de ida' : 'Vuelo de vuelta'} · {fechaCorta(fecha)} · {hora} ({donde})
         </span>
         {detalle && <span className="negrita">{detalle}</span>}
+        {facturacion && <span className="pequeno exito">Facturación online abierta</span>}
         {aeropuerto && <span className="pequeno secundario">Estar en el aeropuerto hacia las {aeropuerto} (unas 3 h antes).</span>}
       </span>
       {estado && (

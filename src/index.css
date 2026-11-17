@@ -543,3 +543,12 @@ select.entrada {
 .tira-fotos { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
 .tira-fotos a { flex: none; width: 84px; height: 84px; border-radius: 12px; overflow: hidden; background: var(--fondo); scroll-snap-align: start; }
 .tira-fotos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Notas de Japón en Hoy (cambio de hotel, Suica) y último tren. */
+.consejos { gap: 10px; }
+.fila-consejos { display: flex; align-items: center; gap: 12px; }
+.fila-consejos .texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.proximo.tranquilo { border-left-color: var(--ai); }
+.proximo.tranquilo .cuando { color: var(--ai); }
+.proximo.urgente { background: var(--shu-suave); }
+.exito { color: var(--matcha); font-weight: 700; }

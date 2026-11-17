@@ -142,3 +142,12 @@ Mapa del día: probado y QUITADO (17 nov 2026) a petición del usuario: muchas l
 Vuelos: `config.vuelos.{ida,vuelta}` = número, aerolínea, terminal (opcional, vacío por defecto: no inventar). En Ajustes →
 Vuelos. `TarjetaVuelo` en Hoy antes de salir (solo si hay datos), el día de la ida y el de la vuelta, y en DiaPage esos
 días; "Estado" = búsqueda de Google del número (`enlaceEstadoVuelo`), "estar en el aeropuerto" = 3 h antes.
+
+Notas de Japón (sin apartado propio; salen solas en Hoy, `src/domain/consejos.ts`):
+- Último tren al hotel: `dias.ultimo_tren` (migración 0008), en "Editar el día". En Hoy desde 3 h antes (`ultimoTrenPendiente`,
+  mira hoy y ayer; antes de las 5:00 = madrugada del día siguiente), en rojo la última hora.
+- Cambio de hotel (`cambioDeHotel`: se deja uno y se llega a otro): tarjeta el día antes y el mismo día.
+- Suica (`diasSuica`, solo país JP): el día de llegar al primer hotel y el primer día con trayectos. El usuario tiene iPhone.
+- Textos de serie en `CONSEJOS_DE_SERIE`, editables (`/consejos/:tipo`, ajustes id `consejos`; lista vacía = no sale).
+Vuelos: `config.vuelos.facturacionHoras` (24 por defecto). La tarjeta del vuelo sale en Hoy solo desde que abre la
+facturación online (`facturacionAbierta`) y el día del vuelo; ya no durante toda la cuenta atrás.

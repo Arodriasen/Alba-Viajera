@@ -1,3 +1,4 @@
+import { leerConsejos, type Consejos } from '@/domain/consejos';
 import { leerConfig, type ConfigViaje } from '@/domain/config';
 import { leerFrasesPropias, leerTraduccion, type Frase, type TraduccionSerie } from '@/domain/frases';
 import type { Elemento } from '@/domain/listas';
@@ -19,7 +20,7 @@ const nulo = (v: string | undefined) => (v?.trim() ? v.trim() : null);
 const unir = (l: string[]) => nulo(l.map((x) => x.trim()).filter(Boolean).join('\n'));
 
 function aDia(f: FilaLocal): Dia {
-  return { fecha: sinViaje(f.id), titulo: String(f.titulo ?? ''), ciudad: str(f.ciudad), plan: lineas(f.plan), notas: str(f.notas), foto: str(f.foto) };
+  return { fecha: sinViaje(f.id), titulo: String(f.titulo ?? ''), ciudad: str(f.ciudad), plan: lineas(f.plan), notas: str(f.notas), foto: str(f.foto), ultimoTren: str(f.ultimo_tren) };
 }
 
 function aAlojamiento(f: FilaLocal): Alojamiento {
@@ -174,6 +175,7 @@ export class ViajeLocal implements ViajeRepositorio {
       plan: unir(d.plan),
       notas: nulo(d.notas),
       foto: d.foto ?? null,
+      ultimo_tren: nulo(d.ultimoTren),
     });
   }
 
@@ -307,6 +309,13 @@ export class ViajeLocal implements ViajeRepositorio {
   async presupuesto() {
     const f = await this.viva('ajustes', 'presupuesto');
     return leerPresupuesto(typeof f?.valor === 'string' ? f.valor : undefined);
+  }
+  async consejos() {
+    const f = await this.viva('ajustes', 'consejos');
+    return leerConsejos(typeof f?.valor === 'string' ? f.valor : undefined);
+  }
+  guardarConsejos(c: Consejos) {
+    return this.escribir('ajustes', { id: 'consejos', valor: JSON.stringify(c) });
   }
   async frasesPropias() {
     const f = await this.viva('ajustes', 'frases');
