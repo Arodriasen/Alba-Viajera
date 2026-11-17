@@ -1,0 +1,10 @@
+{
+  "files": [],
+  // Los paths aquí también los usa esbuild al empaquetar las Functions (src/domain usa "@/…" como en la APK).
+  "compilerOptions": { "paths": { "@/*": ["./src/*"] } },
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.server.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

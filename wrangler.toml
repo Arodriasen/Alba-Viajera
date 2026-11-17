@@ -1,0 +1,17 @@
+name = "albaviajera"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Todos los datos (fotos del día incluidas) viven en D1: gratis y sin tarjeta.
+# database_id se rellena tras `npx wrangler d1 create albaviajera` (ver CHULETA.md).
+[[d1_databases]]
+binding = "DB"
+database_name = "albaviajera"
+database_id = "0e514831-3d9d-42ef-b9d9-1f038a161a90"
+migrations_dir = "migrations"
+
+# IA de Cloudflare para traducir las frases útiles (gratis dentro del cupo diario; también en local se usa la de Cloudflare).
+[ai]
+binding = "AI"
+remote = true

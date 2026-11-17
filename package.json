@@ -1,0 +1,48 @@
+{
+  "name": "albaviajera",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:api": "wrangler pages dev dist --port 8791",
+    "build": "tsc -b && tsc -p functions && vite build",
+    "typecheck": "tsc -b && tsc -p functions",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "db:migrar:local": "wrangler d1 migrations apply albaviajera --local",
+    "db:migrar": "wrangler d1 migrations apply albaviajera --remote",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name albaviajera --branch main",
+    "icons": "pwa-assets-generator"
+  },
+  "dependencies": {
+    "idb": "^8.0.4",
+    "jose": "^6.2.17",
+    "lucide-react": "^1.73.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261113.1",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/sql.js": "^1.4.11",
+    "@vite-pwa/assets-generator": "^2.0.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "oxlint": "^1.93.0",
+    "sql.js": "^1.16.0",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.161.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261110.1": true
+  }
+}
