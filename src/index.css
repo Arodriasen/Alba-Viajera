@@ -531,3 +531,15 @@ select.entrada {
 /* Sugerencias discretas (noches sin hotel, el hotel de un día). */
 .sugerencia { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px; background: color-mix(in srgb, var(--ai) 6%, transparent); }
 .sugerencia .muy-pequeno { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Resumen del viaje (Hoy, al volver). */
+.cifras-viaje { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cifra { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px; border-radius: var(--r); background: var(--papel); box-shadow: var(--sombra); text-align: center; }
+.cifra .numero { font: 700 26px/1.1 var(--mincho); color: var(--tinta); font-variant-numeric: tabular-nums; }
+.cifra .muy-pequeno { color: var(--tinta-suave); }
+.ciudad-resumen { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--borde); }
+.ciudad-resumen:last-child { border-bottom: 0; }
+.ciudad-resumen .kanji-ciudad { flex: none; width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: var(--c); color: #fff; font: 700 18px var(--mincho); }
+.tira-fotos { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+.tira-fotos a { flex: none; width: 84px; height: 84px; border-radius: 12px; overflow: hidden; background: var(--fondo); scroll-snap-align: start; }
+.tira-fotos img { width: 100%; height: 100%; object-fit: cover; display: block; }

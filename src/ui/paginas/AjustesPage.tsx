@@ -1,10 +1,12 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { tiene, type ConfigViaje, type IdParque } from '@/domain/config';
+import { tiene, type ConfigViaje, type IdParque, type InfoVuelo } from '@/domain/config';
 import { parquesDe } from '@/domain/parques';
 import { diasEntre } from '@/domain/viaje';
+import { hojasDelViaje, nombreDeArchivo } from '@/domain/exportar';
 import { apartadosDe, tituloDelViaje, zonaValida } from '@/domain/viajes';
+import { aExcel, guardarArchivo } from '@/infrastructure/excel';
 
 import { useAlba } from '../AlbaViajera';
 import { PALETA } from '../ciudades';
@@ -167,6 +169,28 @@ export function AjustesPage() {
             <Campo etiqueta="Llegada a casa" ayuda={`El viaje tiene ${dias} ${dias === 1 ? 'día' : 'días'} en la app.`}>
               {fecha(form.fin, (fin) => cambiar({ fin }))}
             </Campo>
+            {(['ida', 'vuelta'] as const).map((tramo) => {
+              const vuelo = form.vuelos[tramo];
+              const poner = (c: Partial<InfoVuelo>) => cambiar({ vuelos: { ...form.vuelos, [tramo]: { ...vuelo, ...c } } });
+              return (
+                <div key={tramo} className="dos-columnas">
+                  <Campo etiqueta={tramo === 'ida' ? 'Nº de vuelo de ida' : 'Nº de vuelo de vuelta'}>
+                    <input className="entrada" value={vuelo.numero} placeholder="IB 6801" autoCapitalize="characters" onChange={(e) => poner({ numero: e.target.value })} />
+                  </Campo>
+                  <Campo etiqueta="Terminal">
+                    <input className="entrada" value={vuelo.terminal} placeholder="T4S" onChange={(e) => poner({ terminal: e.target.value })} />
+                  </Campo>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <Campo etiqueta="Aerolínea">
+                      <input className="entrada" value={vuelo.aerolinea} placeholder="Iberia" onChange={(e) => poner({ aerolinea: e.target.value })} />
+                    </Campo>
+                  </div>
+                </div>
+              );
+            })}
+            <p className="muy-pequeno secundario" style={{ margin: 0 }}>
+              Opcional. Se ve en Hoy antes de salir y el día de cada vuelo, con un enlace al estado del vuelo.
+            </p>
           </section>
 
           {tiene(form, 'jrpass') && (
@@ -258,11 +282,61 @@ export function AjustesPage() {
             Los cambios se guardan para los dos móviles.
           </p>
 
+          <ExportarExcel />
+
           <button type="button" className="boton peligro" onClick={() => void borrarViaje()}>
             Borrar este viaje
           </button>
         </form>
       </main>
     </>
+  );
+}
+
+/** Todo el viaje en un Excel (una hoja por apartado), con lo guardado ahora (no lo que se esté editando arriba). */
+export function ExportarExcel() {
+  const { viaje, hoy } = useAlba();
+  const [estado, setEstado] = useState<'listo' | 'preparando' | 'hecho'>('listo');
+  const [error, setError] = useState<string>();
+
+  const exportar = async () => {
+    setEstado('preparando');
+    setError(undefined);
+    try {
+      const config = await viaje.config();
+      const hojas = hojasDelViaje({
+        config,
+        dias: await viaje.dias(),
+        alojamientos: await viaje.alojamientos(),
+        trayectos: await viaje.trayectos(),
+        reservas: await viaje.reservas(),
+        gastos: await viaje.gastos(),
+        presupuesto: await viaje.presupuesto(),
+        elementos: await viaje.elementos(),
+      });
+      await guardarArchivo(await aExcel(hojas), nombreDeArchivo(config.destino, hoy));
+      setEstado('hecho');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se ha podido preparar el Excel');
+      setEstado('listo');
+    }
+  };
+
+  return (
+    <section className="tarjeta fila-tarjeta">
+      <span className="icono-redondo verde">
+        <Icono nombre="excel" tamano={20} />
+      </span>
+      <span className="texto">
+        <span className="negrita">Exportar a Excel</span>
+        <span className="pequeno secundario">
+          {estado === 'hecho' ? 'Hecho. Puedes volver a exportarlo cuando quieras.' : 'Itinerario, hoteles, trayectos, reservas, gastos y listas, cada uno en su hoja.'}
+        </span>
+        {error && <span className="pequeno error">{error}</span>}
+      </span>
+      <button type="button" className="accion-texto" disabled={estado === 'preparando'} onClick={() => void exportar()}>
+        {estado === 'preparando' ? 'Preparando…' : 'Exportar'}
+      </button>
+    </section>
   );
 }

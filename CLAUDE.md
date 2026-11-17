@@ -126,3 +126,19 @@ Solo se entra desde Presupuesto (el usuario no lo quiere en Más ni en Hoy). No 
 Foto del ticket: `gastos.foto` (migración 0007), misma tabla `fotos` que la del día (`fotos.nueva(blob)` devuelve el
 nombre). La foto elegida se queda en el formulario hasta Guardar; al cambiarla, quitarla o borrar el gasto se `olvidar`
 la anterior. Borrar un viaje también se lleva las de los tickets.
+
+Exportar a Excel (Ajustes del viaje, tarjeta "Exportar a Excel"): `src/domain/exportar.ts` arma las hojas (Resumen,
+Itinerario con todos los días y el hotel de cada noche, Hoteles, Trayectos, Reservas, Gastos, Presupuesto con total y una
+hoja por lista propia; solo los apartados que tiene el viaje). `src/infrastructure/excel.ts` las escribe con
+`write-excel-file` (import dinámico: chunk aparte) y comparte el archivo (hoja de compartir del móvil) o lo descarga.
+Exporta lo guardado, no lo que se esté editando en el formulario. Importar: NO hecho (no pedido).
+
+Resumen del viaje (Hoy cuando `fase` = después, `ResumenViaje.tsx`, `src/domain/resumen.ts`): cifras (noches, ciudades,
+hoteles, trayectos/JR, entradas, fotos), lo gastado y la categoría con más gasto, tira de fotos del día, ciudades con
+noches y días (hoteles cancelados no cuentan), parques y "Exportar a Excel".
+
+Mapa del día: probado y QUITADO (17 nov 2026) a petición del usuario: muchas líneas del plan no son sitios. No volver a proponerlo.
+
+Vuelos: `config.vuelos.{ida,vuelta}` = número, aerolínea, terminal (opcional, vacío por defecto: no inventar). En Ajustes →
+Vuelos. `TarjetaVuelo` en Hoy antes de salir (solo si hay datos), el día de la ida y el de la vuelta, y en DiaPage esos
+días; "Estado" = búsqueda de Google del número (`enlaceEstadoVuelo`), "estar en el aeropuerto" = 3 h antes.

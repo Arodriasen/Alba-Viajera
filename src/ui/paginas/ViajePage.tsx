@@ -25,6 +25,7 @@ import { MiniTiempo, useTiempoItinerario } from '../componentes/clima';
 import { EnlaceParque } from '../componentes/EnlaceParque';
 import { Campo, useGuardadoSolo } from '../componentes/formulario';
 import { FotoDelDia } from '../componentes/FotoDelDia';
+import { TarjetaVuelo } from '../componentes/TarjetaVuelo';
 import { Icono } from '../componentes/Icono';
 import { CampoCiudad, useGuardarCiudad } from '../componentes/CampoCiudad';
 import { PortadaDia } from '../componentes/PortadaDia';
@@ -320,6 +321,9 @@ export function DiaPage() {
           {tiene(config, 'parques') && <EnlaceParque fecha={fecha} />}
 
           {tiene(config, 'album') && <FotoDelDia fecha={fecha} foto={datos.dia?.foto} />}
+
+          {fecha === config.inicio && <TarjetaVuelo tramo="ida" siHayDatos />}
+          {fecha === config.vueltaFecha && <TarjetaVuelo tramo="vuelta" siHayDatos />}
 
           <section className="seccion">
             <p className="etiqueta">Reservas y entradas</p>

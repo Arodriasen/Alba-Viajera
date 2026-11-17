@@ -34,6 +34,8 @@ import { PortadaDia } from '../componentes/PortadaDia';
 import { CuentaAtras, RelojDestino, Restante } from '../componentes/tiempo';
 import { TarjetaGastosHoy } from './GastosPage';
 import { TarjetaTaxFree } from './TaxFreePage';
+import { ResumenViaje } from './ResumenViaje';
+import { TarjetaVuelo } from '../componentes/TarjetaVuelo';
 
 export function HoyPage() {
   const { hoy, simulando, config } = useAlba();
@@ -54,20 +56,7 @@ export function HoyPage() {
         )}
         {f.tipo === 'antes' && <Antes />}
         {f.tipo === 'durante' && <Durante fecha={hoy} dia={f.dia} total={f.total} />}
-        {f.tipo === 'despues' && (
-          <div className="portada">
-            <p className="grande">{config.pais === 'JP' ? 'おかえり' : '¡De vuelta!'}</p>
-            <p className="secundario">Bienvenidos a casa. El viaje queda guardado aquí.</p>
-            {tiene(config, 'album') && (
-              <Link to="/album" className="boton shu">
-                Ver el álbum
-              </Link>
-            )}
-            <Link to="/viaje" className="boton claro">
-              Ver el viaje
-            </Link>
-          </div>
-        )}
+        {f.tipo === 'despues' && <ResumenViaje />}
       </main>
     </>
   );
@@ -97,6 +86,8 @@ function Antes() {
         </p>
         {tiene(config, 'tiempo') && <ChipTiempo ciudad={config.ciudades[0]?.nombre} texto={`${config.ciudades[0]?.nombre ?? config.destino} ahora:`} />}
       </Portada>
+
+      <TarjetaVuelo tramo="ida" siHayDatos />
 
       {tiene(config, 'reservas') && conVenta.length > 0 && (
         <section className="seccion">
@@ -200,6 +191,8 @@ function Durante({ fecha, dia, total }: { fecha: Fecha; dia: number; total: numb
       </PortadaDia>
 
       {tiene(config, 'avisos') && <FranjaAvisos ciudad={ciudadHoy} />}
+      {fecha === config.inicio && <TarjetaVuelo tramo="ida" />}
+      {fecha === config.vueltaFecha && <TarjetaVuelo tramo="vuelta" />}
       {tiene(config, 'tiempo') && <ConsejoTiempo ciudad={ciudadHoy} />}
 
       {proximo && (

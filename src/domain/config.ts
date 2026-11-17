@@ -29,6 +29,14 @@ export interface ParqueConfig {
   primero: string;
 }
 
+export interface InfoVuelo {
+  /** "IB 6801" */
+  numero: string;
+  aerolinea: string;
+  terminal: string;
+}
+export const VUELO_VACIO: InfoVuelo = { numero: '', aerolinea: '', terminal: '' };
+
 export interface ConfigViaje {
   /** "Japón", "Roma"… (la app dice "Alba en …"). */
   destino: string;
@@ -60,6 +68,8 @@ export interface ConfigViaje {
   /** Vuelo de vuelta (hora del destino). */
   vueltaFecha: Fecha;
   horaVuelta: string;
+  /** Datos de los vuelos (todo opcional: vacío = no se enseña). */
+  vuelos: { ida: InfoVuelo; vuelta: InfoVuelo };
   jrPass: { inicio: Fecha; dias: number };
   parques: Record<IdParque, ParqueConfig>;
   ciudades: CiudadConfig[];
@@ -83,6 +93,7 @@ export const CONFIG_POR_DEFECTO: ConfigViaje = {
   horaSalida: '20:20',
   vueltaFecha: '2027-02-01',
   horaVuelta: '22:10',
+  vuelos: { ida: VUELO_VACIO, vuelta: VUELO_VACIO },
   jrPass: { inicio: '2027-01-22', dias: 7 },
   parques: {
     tdl: {
@@ -125,6 +136,12 @@ function leerSalida(v: unknown): ConfigViaje['salida'] {
 
 /** ¿Tiene este viaje ese apartado? */
 export const tiene = (c: ConfigViaje, a: Apartado) => c.apartados.includes(a);
+
+function leerVuelo(v: unknown): InfoVuelo {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  const t = (x: unknown, max: number) => (typeof x === 'string' ? x.trim().slice(0, max) : '');
+  return { numero: t(o.numero, 12), aerolinea: t(o.aerolinea, 60), terminal: t(o.terminal, 30) };
+}
 
 /** Lee el JSON guardado sin fiarse de él: lo que no valga se cambia por el valor por defecto. */
 export function leerConfig(json: string | undefined): ConfigViaje {
@@ -185,6 +202,7 @@ export function leerConfig(json: string | undefined): ConfigViaje {
     horaSalida: hora(v.horaSalida, d.horaSalida),
     vueltaFecha: fecha(v.vueltaFecha, d.vueltaFecha),
     horaVuelta: hora(v.horaVuelta, d.horaVuelta),
+    vuelos: { ida: leerVuelo((v.vuelos as Record<string, unknown> | undefined)?.ida), vuelta: leerVuelo((v.vuelos as Record<string, unknown> | undefined)?.vuelta) },
     jrPass: { inicio: fecha(jr.inicio, d.jrPass.inicio), dias },
     parques: Object.fromEntries(
       (Object.keys(d.parques) as IdParque[]).map((id) => [

@@ -337,3 +337,18 @@ export function enlaceLugar(lugar: string): string {
 
 /** NAVITIME no tiene enlaces de ruta documentados: se abre su buscador (y la app, si está instalada). */
 export const ENLACE_NAVITIME = 'https://japantravel.navitime.com/es/';
+
+/** Estado del vuelo: la búsqueda de Google enseña la tarjeta del vuelo (puerta, retrasos) sin app ni clave. */
+export function enlaceEstadoVuelo(numero: string): string | undefined {
+  const n = numero.replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z0-9]{2}\d{1,4}[A-Z]?$/.test(n)) return undefined;
+  return `https://www.google.com/search?${new URLSearchParams({ q: `${n} vuelo` })}`;
+}
+
+/** A qué hora conviene estar en el aeropuerto (vuelo internacional: unas 3 h antes). "HH:MM". */
+export function horaAeropuerto(horaVuelo: string, horasAntes = 3): string | undefined {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(horaVuelo);
+  if (!m) return undefined;
+  const min = (((Number(m[1]) - horasAntes) * 60 + Number(m[2])) % 1440 + 1440) % 1440;
+  return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+}
