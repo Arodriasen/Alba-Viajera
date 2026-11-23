@@ -4,8 +4,9 @@
  */
 
 import { tiene, type ConfigViaje } from './config';
-import { resumir, type Gasto, type Presupuesto } from './gastos';
+import { enMoneda, resumir, type Gasto, type Presupuesto } from './gastos';
 import type { Elemento } from './listas';
+import type { EntradaDiario } from './diario';
 import { tituloDelViaje } from './viajes';
 import { alojamientoDeLaNoche, diasEntre, fechasDelViaje, type Alojamiento, type Dia, type Fecha, type Reserva, type Trayecto } from './viaje';
 
@@ -35,6 +36,8 @@ export interface DatosViaje {
   gastos: Gasto[];
   presupuesto: Presupuesto;
   elementos: Elemento[];
+  /** El diario (solo los días escritos). */
+  diario?: EntradaDiario[];
 }
 
 const c = (titulo: string, tipo: TipoColumna = 'texto', ancho = 16): Columna => ({ titulo, tipo, ancho });
@@ -92,6 +95,14 @@ export function hojasDelViaje(d: DatosViaje): Hoja[] {
     }),
   });
 
+  if (d.diario?.length) {
+    hojas.push({
+      nombre: 'Diario',
+      columnas: [c('Día', 'fecha', 12), c('Título', 'texto', 30), c('Diario', 'largo', 90)],
+      filas: d.diario.map((e) => [e.fecha, v(porFecha.get(e.fecha)?.titulo), e.texto.trim()]),
+    });
+  }
+
   hojas.push({
     nombre: 'Hoteles',
     columnas: [
@@ -103,6 +114,8 @@ export function hojasDelViaje(d: DatosViaje): Hoja[] {
       c('Check-in', 'texto', 9),
       c('Check-out', 'texto', 9),
       c('Estado', 'texto', 12),
+      c('Precio', 'texto', 12),
+      c('Pagado', 'texto', 8),
       c('Dirección', 'largo', 36),
       c('Dirección (local)', 'largo', 30),
       c('Enlace', 'texto', 30),
@@ -119,6 +132,8 @@ export function hojasDelViaje(d: DatosViaje): Hoja[] {
         v(a.checkin),
         v(a.checkout),
         ESTADO_HOTEL[a.estado],
+        a.precio ? enMoneda(a.precio, a.moneda ?? 'EUR') : null,
+        a.precio ? siNo(a.pagado) : null,
         v(a.direccion),
         v(a.direccionJa),
         v(a.enlace),

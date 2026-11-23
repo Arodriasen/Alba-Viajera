@@ -72,3 +72,20 @@ export async function traducirTextos(de: string, a: string, textos: string[]): P
   });
   return r.textos;
 }
+
+/**
+ * Cierra la sesión de Cloudflare Access: primero la de esta app (borra su cookie) y después la general del
+ * equipo, para que al volver pida el código del correo y la sesión empiece de cero. Lo guardado en el móvil se
+ * queda (lo que falte por subir se sube al volver a entrar).
+ */
+export async function cerrarSesion(): Promise<void> {
+  let general: string | null = null;
+  try {
+    general = (await json<{ salir: string | null }>('sesion')).salir;
+  } catch {
+    // Sin red o sin sesión: basta con la de la app.
+  }
+  await fetch('/cdn-cgi/access/logout', { credentials: 'same-origin', redirect: 'manual' }).catch(() => undefined);
+  // Tras cerrar, al abrir la app sale de la caché del móvil con "Entrar" (lleva a /api/entrar, que pide el código).
+  location.href = general ?? '/cdn-cgi/access/logout';
+}

@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { diasEntre, fechaCorta, ordenarAlojamientos, type Alojamiento, type EstadoAlojamiento, fechasParaIncluir, nochesParaHotel, nochesSinHotel } from '@/domain/viaje';
+import { sinViaje } from '@/domain/viajes';
 
 import { useAlba, useConsulta } from '../AlbaViajera';
 import { BotonAnadir, Cabecera, Cargando, TarjetaAlojamiento } from '../componentes/comunes';
@@ -10,6 +11,43 @@ import { Icono } from '../componentes/Icono';
 import { CampoFecha } from '../componentes/CampoFecha';
 import { CampoCiudad, useGuardarCiudad } from '../componentes/CampoCiudad';
 import { ciudad } from '../ciudades';
+import { aEuros, enMoneda, euros, gastoDelHotel, hotelConPrecio, hotelDelGasto, idGastoDeHotel, simboloMoneda, type Gasto } from '@/domain/gastos';
+import { useCambio } from './GastosPage';
+
+/**
+ * Deja el gasto del hotel como toca: lo crea o lo actualiza si está pagado y lo quita si no (sin precio,
+ * sin pagar, cancelado o borrado). `porEuro` = 1 € = N de la moneda del hotel.
+ */
+function useGastoDelHotel() {
+  const { viaje, hoy, fotos } = useAlba();
+  /** `enlazar`: un gasto apuntado a mano antes que pasa a ser el del hotel (se conserva lo suyo y deja de existir suelto). */
+  return async (a: Alojamiento | undefined, alojamientoId: string, porEuro: number, enlazar?: Gasto) => {
+    const gastoId = idGastoDeHotel(alojamientoId);
+    const existente = (await viaje.gasto(gastoId)) ?? enlazar;
+    const categorias = (await viaje.presupuesto()).categorias.map((c) => c.id);
+    const g = a && gastoDelHotel(a, { existente, porEuro, hoy, categorias });
+    if (g) {
+      await viaje.guardarGasto(g);
+      // El suelto, fuera (su foto ya es la del gasto del hotel).
+      if (enlazar && enlazar.id !== g.id) await viaje.borrarGasto(enlazar.id);
+    } else if (existente && existente.id === gastoId) {
+      await viaje.borrarGasto(gastoId);
+      if (existente.foto) await fotos.olvidar(existente.foto);
+    }
+  };
+}
+
+/** "90.000" o "312,50" → número (NaN si no lo es). */
+const aNumero = (t: string) => {
+  const n = Number(t.replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : NaN;
+};
+
+/** "¥90.000 · pagado" / "¥90.000 · se paga allí" (o undefined sin precio). */
+function textoPrecio(a: Alojamiento): string | undefined {
+  if (!a.precio) return undefined;
+  return `${enMoneda(a.precio, a.moneda ?? 'EUR')} · ${a.pagado ? 'pagado' : 'se paga allí'}`;
+}
 
 const ESTADOS: { valor: EstadoAlojamiento; texto: string; clase: string }[] = [
   { valor: 'reservado', texto: 'Reservado', clase: 'matcha' },
@@ -48,6 +86,7 @@ export function AlojamientosPage() {
                 <span className="texto">
                   <span className="negrita">{a.nombre}</span>
                   <span className="pequeno secundario">{[a.ciudad, noches(a)].filter(Boolean).join(' · ')}</span>
+                  {hotelConPrecio(a) && <span className="muy-pequeno secundario">{textoPrecio(a)}</span>}
                 </span>
                 {a.estado !== 'reservado' && <span className={`pastilla ${estado(a.estado).clase}`}>{estado(a.estado).texto}</span>}
                 <span className="flecha">
@@ -65,7 +104,11 @@ export function AlojamientosPage() {
 
 export function AlojamientoPage() {
   const { id = '' } = useParams();
+  const { viaje } = useAlba();
   const a = useConsulta(async ({ viaje }) => ({ a: await viaje.alojamiento(id) }), [id]);
+  const moneda = a?.a?.moneda ?? 'EUR';
+  const cambio = useCambio(moneda);
+  const guardarGasto = useGastoDelHotel();
   if (!a) return <Cargando />;
   if (!a.a) {
     return (
@@ -91,8 +134,41 @@ export function AlojamientoPage() {
             {noches(al) && <span className="pastilla">{noches(al)}</span>}
             {al.checkin && <span className="pastilla">check-in {al.checkin}</span>}
             {al.checkout && <span className="pastilla">check-out {al.checkout}</span>}
+            {hotelConPrecio(al) && al.pagado && <span className="pastilla">{textoPrecio(al)}</span>}
           </div>
         </div>
+        {hotelConPrecio(al) && !al.pagado && (
+          <div className="tarjeta fila-tarjeta">
+            <span className="icono-redondo">
+              <Icono nombre="cartera" tamano={20} />
+            </span>
+            <span className="texto">
+              <span className="etiqueta">Se paga en el hotel</span>
+              <span className="negrita">
+                {enMoneda(al.precio!, moneda)}
+                {moneda !== 'EUR' && cambio && <span className="pequeno secundario"> ≈ {euros(aEuros(al.precio!, moneda, cambio.porEuro))}</span>}
+              </span>
+            </span>
+            {moneda === 'EUR' || cambio ? (
+              <button
+                type="button"
+                className="accion-texto"
+                onClick={async () => {
+                  const pagado = { ...al, pagado: true };
+                  await viaje.guardarAlojamiento(pagado);
+                  await guardarGasto(pagado, al.id, moneda === 'EUR' ? 1 : cambio!.porEuro);
+                }}
+              >
+                <Icono nombre="check" tamano={16} /> Pagado
+              </button>
+            ) : (
+              // Sin cambio guardado para esa moneda: se escribe en el formulario.
+              <Link to={`/alojamiento/${al.id}/editar`} className="accion-texto">
+                Pagado…
+              </Link>
+            )}
+          </div>
+        )}
         <TarjetaAlojamiento alojamiento={al} />
         {al.notas && (
           <div className="tarjeta">
@@ -117,19 +193,44 @@ export function EditarAlojamientoPage() {
   const { viaje, config } = useAlba();
   const navegar = useNavigate();
   const cargado = useConsulta(
-    async ({ viaje: v }) => ({ a: nuevo ? undefined : await v.alojamiento(id!), dias: await v.dias(), alojamientos: await v.alojamientos() }),
+    async ({ viaje: v }) => ({
+      a: nuevo ? undefined : await v.alojamiento(id!),
+      dias: await v.dias(),
+      alojamientos: await v.alojamientos(),
+      gastos: await v.gastos(),
+    }),
     [id],
   );
   const [form, setForm] = useState<Form>();
+  /** Gasto apuntado a mano antes que pasará a ser el del hotel al guardar. */
+  const [enlazar, setEnlazar] = useState<Gasto>();
+  /** El precio tal como se escribe ("90.000", "312,50"). */
+  const [precioTexto, setPrecioTexto] = useState('');
+  /** 1 € = N, escrito a mano solo si no hay cambio automático para esa moneda. */
+  const [cambioTexto, setCambioTexto] = useState('');
   const guardarCiudad = useGuardarCiudad();
+  const guardarGasto = useGastoDelHotel();
+  const moneda = form?.moneda ?? config.moneda;
+  const cambioAuto = useCambio(moneda);
 
   useEffect(() => {
     if (form || !cargado) return;
     setForm(cargado.a ?? { nombre: '', estado: 'pendiente' });
+    if (cargado.a?.precio) setPrecioTexto(String(cargado.a.precio).replace('.', ','));
   }, [cargado, form]);
 
   if (!form || !cargado) return <Cargando />;
   const cambiar = (c: Partial<Form>) => setForm({ ...form, ...c });
+  const precio = precioTexto.trim() ? aNumero(precioTexto) : undefined;
+  const precioMal = precio !== undefined && !(precio > 0);
+  const porEuro = moneda === 'EUR' ? 1 : (cambioAuto?.porEuro ?? aNumero(cambioTexto));
+  const sinCambio = moneda !== 'EUR' && !(porEuro > 0);
+  // Pagado sin cambio para pasarlo a euros: hay que escribirlo.
+  const faltaCambio = Boolean(precio && form.pagado && sinCambio);
+  const monedas = [...new Set([config.moneda, 'EUR', moneda])];
+  // Gastos de alojamiento apuntados a mano (para no contar dos veces), si este hotel aún no tiene el suyo.
+  const yaTieneGasto = Boolean(cargado.a && cargado.gastos.some((g) => hotelDelGasto(g.id) === sinViaje(cargado.a!.id)));
+  const sueltos = yaTieneGasto ? [] : cargado.gastos.filter((g) => g.categoria === 'alojamiento' && !hotelDelGasto(g.id));
   const texto = (campo: keyof Form, etiqueta: string, ayuda?: string, extra?: { placeholder?: string; lang?: string }) => (
     <Campo etiqueta={etiqueta} ayuda={ayuda}>
       <input className="entrada" value={(form[campo] as string) ?? ''} onChange={(e) => cambiar({ [campo]: e.target.value || undefined })} {...extra} />
@@ -144,10 +245,20 @@ export function EditarAlojamientoPage() {
           className="formulario"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (!form.nombre.trim()) return;
+            if (!form.nombre.trim() || precioMal || faltaCambio) return;
             const nuevoId = cargado.a?.id ?? crypto.randomUUID();
             await guardarCiudad(form.ciudad);
-            await viaje.guardarAlojamiento({ ...form, ciudad: form.ciudad?.trim() || undefined, id: nuevoId });
+            const guardado: Alojamiento = {
+              ...form,
+              ciudad: form.ciudad?.trim() || undefined,
+              id: nuevoId,
+              precio,
+              moneda: precio ? moneda : undefined,
+              pagado: Boolean(precio && form.pagado),
+            };
+            await viaje.guardarAlojamiento(guardado);
+            // Pagado: su gasto en el presupuesto (creado, actualizado o quitado).
+            await guardarGasto(guardado, nuevoId, porEuro, guardado.pagado ? enlazar : undefined);
             // Que el viaje incluya las noches del hotel.
             const actual = await viaje.config();
             const ampliar = form.estado !== 'cancelado' ? fechasParaIncluir(actual, form) : undefined;
@@ -213,6 +324,111 @@ export function EditarAlojamientoPage() {
                 </div>
               );
             })()}
+          <Campo etiqueta="Precio" ayuda="De toda la estancia (opcional). Pagado, cuenta como gasto en Presupuesto → Alojamiento.">
+            <span className="euros-entrada">
+              <input
+                className="entrada"
+                inputMode="decimal"
+                placeholder="0"
+                value={precioTexto}
+                onChange={(e) => setPrecioTexto(e.target.value.replace(/[^\d.,]/g, ''))}
+              />
+              <span>{simboloMoneda(moneda)}</span>
+            </span>
+          </Campo>
+          {precioMal && <p className="error">El precio no es un número.</p>}
+          {monedas.length > 1 && (
+            <Opciones
+              valor={moneda}
+              alCambiar={(m) => {
+                cambiar({ moneda: m });
+                setCambioTexto('');
+              }}
+              opciones={monedas.map((m) => ({ valor: m, texto: m === 'EUR' ? 'Euros €' : `${m} ${simboloMoneda(m)}` }))}
+            />
+          )}
+          {Boolean(precio && precio > 0) && (
+            <>
+              {moneda !== 'EUR' && (
+                <p className="muy-pequeno secundario" style={{ margin: 0 }}>
+                  {cambioAuto ? (
+                    <>
+                      ≈ {euros(aEuros(precio!, moneda, cambioAuto.porEuro))} con el cambio de hoy
+                    </>
+                  ) : (
+                    <>
+                      Sin cambio automático para {moneda}: 1 € ={' '}
+                      <input
+                        className="cambio"
+                        inputMode="decimal"
+                        aria-label={`${moneda} por euro`}
+                        placeholder="?"
+                        value={cambioTexto}
+                        onChange={(e) => setCambioTexto(e.target.value.replace(/[^\d.,]/g, ''))}
+                      />{' '}
+                      {simboloMoneda(moneda)}
+                    </>
+                  )}
+                </p>
+              )}
+              <label className="interruptor tarjeta" style={{ flexDirection: 'row' }}>
+                <span>
+                  <span className="negrita" style={{ display: 'block' }}>
+                    Ya está pagado
+                  </span>
+                  <span className="muy-pequeno secundario">
+                    {form.pagado ? 'Cuenta como gasto en Presupuesto.' : 'Sale en Presupuesto como «por pagar en el hotel».'}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.pagado)}
+                  onChange={(e) => {
+                    cambiar({ pagado: e.target.checked });
+                    if (!e.target.checked) setEnlazar(undefined);
+                  }}
+                />
+              </label>
+              {faltaCambio && <p className="error">Escribe el cambio para pasarlo a euros.</p>}
+              {form.pagado && enlazar && (
+                <div className="sugerencia">
+                  <span className="muy-pequeno secundario">
+                    Al guardar, «{enlazar.concepto}» pasa a ser el gasto de este hotel (con su día, notas y ticket): no contará dos veces.
+                  </span>
+                  <button type="button" className="accion-texto" onClick={() => setEnlazar(undefined)}>
+                    Deshacer
+                  </button>
+                </div>
+              )}
+              {form.estado === 'cancelado' && (
+                <p className="muy-pequeno secundario" style={{ margin: 0 }}>
+                  Cancelado: no cuenta en el presupuesto. Si os cobran algo por cancelar, apuntadlo como gasto.
+                </p>
+              )}
+            </>
+          )}
+          {sueltos.length > 0 && !enlazar && (precio === undefined || form.pagado) && (
+            <div className="sugerencia">
+              <span className="muy-pequeno secundario">¿Ya lo tenéis apuntado en Presupuesto? Tocadlo para enlazarlo y que no cuente dos veces:</span>
+              <div className="opciones compactas">
+                {sueltos.slice(0, 6).map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="opcion sugerida"
+                    onClick={() => {
+                      setEnlazar(g);
+                      setPrecioTexto(String(g.importe).replace('.', ','));
+                      setCambioTexto('');
+                      cambiar({ moneda: g.moneda, pagado: true });
+                    }}
+                  >
+                    {g.concepto} · {enMoneda(g.importe, g.moneda)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {texto('direccion', 'Dirección', 'La que se busca en Google Maps.')}
           {config.pais === 'JP'
             ? texto('direccionJa', 'Dirección en japonés', 'La que se enseña al taxista.', { lang: 'ja' })
@@ -221,7 +437,9 @@ export function EditarAlojamientoPage() {
           <Campo etiqueta="Notas">
             <textarea className="entrada" rows={4} value={form.notas ?? ''} onChange={(e) => cambiar({ notas: e.target.value || undefined })} />
           </Campo>
-          <button className="boton shu">Guardar</button>
+          <button className="boton shu" disabled={precioMal || faltaCambio}>
+            Guardar
+          </button>
           {!nuevo && (
             <button
               type="button"
@@ -229,6 +447,8 @@ export function EditarAlojamientoPage() {
               onClick={async () => {
                 if (!confirmarBorrado(form.nombre)) return;
                 await viaje.borrarAlojamiento(cargado.a!.id);
+                // Y su gasto, si estaba pagado.
+                await guardarGasto(undefined, cargado.a!.id, 1);
                 navegar('/hotel', { replace: true });
               }}
             >

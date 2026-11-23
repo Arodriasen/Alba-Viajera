@@ -5,8 +5,11 @@ import { tiene } from '@/domain/config';
 import {
   aEuros,
   euros,
+  enMoneda,
   eurosExactos,
   gastadoEl,
+  hotelDelGasto,
+  hotelesPorPagar,
   ICONOS_CATEGORIA,
   importeEnSuMoneda,
   nuevaCategoriaId,
@@ -60,11 +63,16 @@ export function GastosPage() {
   const { hoy, config } = useAlba();
   const cambio = useCambio(config.moneda);
   const [abierta, setAbierta] = useState<Categoria>();
-  const datos = useConsulta(async ({ viaje }) => ({ gastos: await viaje.gastos(), presupuesto: await viaje.presupuesto() }), []);
+  const datos = useConsulta(
+    async ({ viaje }) => ({ gastos: await viaje.gastos(), presupuesto: await viaje.presupuesto(), alojamientos: await viaje.alojamientos() }),
+    [],
+  );
   if (!datos) return <Cargando />;
   const r = resumir(datos.gastos, datos.presupuesto);
   const enViaje = fase(hoy, config).tipo === 'durante';
   const deHoy = gastadoEl(datos.gastos, hoy);
+  const porPagar = hotelesPorPagar(datos.alojamientos, (m) => (m === config.moneda ? cambio?.porEuro : ultimoCambio(m)?.porEuro));
+  const totalPorPagar = porPagar.every((h) => h.euros !== undefined) ? porPagar.reduce((s, h) => s + h.euros!, 0) : undefined;
 
   return (
     <>
@@ -81,6 +89,33 @@ export function GastosPage() {
             {enViaje && <span>Hoy: {euros(deHoy)}</span>}
           </div>
         </div>
+
+        {porPagar.length > 0 && (
+          <section className="tarjeta">
+            <p className="etiqueta">Por pagar en los hoteles</p>
+            {porPagar.map((h) => (
+              <Link key={h.alojamiento.id} to={`/alojamiento/${h.alojamiento.id}`} className="fila-gasto">
+                <span className="texto">
+                  <span className="recorte">{h.alojamiento.nombre}</span>
+                  <span className="muy-pequeno secundario">
+                    {[h.alojamiento.entrada && `llegada ${fechaCorta(h.alojamiento.entrada)}`, h.moneda !== 'EUR' && enMoneda(h.importe, h.moneda)].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+                <span className="negrita">{h.euros !== undefined ? `${h.moneda !== 'EUR' ? '≈ ' : ''}${euros(h.euros)}` : enMoneda(h.importe, h.moneda)}</span>
+                <Icono nombre="chevron" tamano={16} />
+              </Link>
+            ))}
+            {totalPorPagar !== undefined && (
+              <p className="muy-pequeno secundario" style={{ margin: 0 }}>
+                {porPagar.length > 1 && `En total ${euros(totalPorPagar)}. `}
+                {r.queda - totalPorPagar >= 0
+                  ? `Pagando esto quedarían ${euros(r.queda - totalPorPagar)}.`
+                  : `Pagando esto os pasaríais ${euros(totalPorPagar - r.queda)}.`}{' '}
+                Al pagarlo, márcalo en el hotel.
+              </p>
+            )}
+          </section>
+        )}
 
         <Link to="/gasto/nuevo" className="boton shu grande">
           <Icono nombre="mas" tamano={20} /> Añadir gasto
@@ -277,6 +312,8 @@ export function EditarGastoPage() {
   const monedas = [...new Set([config.moneda, 'EUR', form.moneda])];
   const categorias = cargado.presupuesto.categorias;
   const sueltaActual = !categorias.some((c) => c.id === form.categoria);
+  /** Si el gasto es el precio de un hotel pagado: el id de ese hotel. */
+  const deHotel = nuevo ? undefined : hotelDelGasto(cargado.g!.id);
 
   return (
     <>
@@ -311,6 +348,22 @@ export function EditarGastoPage() {
             navegar(-1);
           }}
         >
+          {deHotel ? (
+            <div className="tarjeta">
+              <p className="etiqueta">Viene del hotel</p>
+              <p className="negrita" style={{ margin: 0 }}>
+                {form.concepto} · {enMoneda(importe, form.moneda)}
+                {form.moneda !== 'EUR' && Number.isFinite(enEuros) && <span className="pequeno secundario"> ≈ {eurosExactos(enEuros)}</span>}
+              </p>
+              <p className="muy-pequeno secundario" style={{ margin: 0 }}>
+                El nombre y el precio se cambian en el hotel; aquí, el resto (día, categoría, notas, ticket).
+              </p>
+              <Link to={`/alojamiento/${deHotel}`} className="accion-texto">
+                <Icono nombre="cama" tamano={16} /> Ir al hotel
+              </Link>
+            </div>
+          ) : (
+          <>
           <div className="tarjeta importe-grande">
             <div className="fila-importe">
               <span className="simbolo">{simboloMoneda(form.moneda)}</span>
@@ -355,6 +408,8 @@ export function EditarGastoPage() {
           <Campo etiqueta="Qué es">
             <input className="entrada" required value={form.concepto} onChange={(e) => cambiar({ concepto: e.target.value })} placeholder="Comida, transporte, recuerdos…" />
           </Campo>
+          </>
+          )}
 
           <div className="campo">
             <span>Categoría</span>
@@ -407,7 +462,7 @@ export function EditarGastoPage() {
           <button className="boton shu" disabled={!valido}>
             Guardar
           </button>
-          {!nuevo && (
+          {!nuevo && !deHotel && (
             <button
               type="button"
               className="boton peligro"

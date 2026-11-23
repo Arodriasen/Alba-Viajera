@@ -151,3 +151,28 @@ Notas de Japón (sin apartado propio; salen solas en Hoy, `src/domain/consejos.t
 - Textos de serie en `CONSEJOS_DE_SERIE`, editables (`/consejos/:tipo`, ajustes id `consejos`; lista vacía = no sale).
 Vuelos: `config.vuelos.facturacionHoras` (24 por defecto). La tarjeta del vuelo sale en Hoy solo desde que abre la
 facturación online (`facturacionAbierta`) y el día del vuelo; ya no durante toda la cuenta atrás.
+
+Cerrar sesión: icono (LogOut) a la derecha del punto de sincronización en la lista de viajes (`Cabecera despues=`).
+`cerrarSesion()` (src/infrastructure/api.ts): pide `/api/sesion` (devuelve `${ACCESS_TEAM_DOMAIN}/cdn-cgi/access/logout`),
+borra la cookie de la app con `/cdn-cgi/access/logout` y navega a la salida general del equipo, para que al volver pida
+el código. Como la PWA sale de la caché del service worker, Access no salta solo: "entrar" (IndicadorSync, sesión caducada)
+lleva a `/api/entrar` (no cacheado → Access pide el código → redirige a /). IndexedDB se queda. Uso previsto: renovar la sesión (dura 1 mes) el
+9-10 de enero, antes del viaje.
+
+Precio de los hoteles (migración 0009: `alojamientos.precio`, `moneda`, `pagado`): en el formulario del hotel, precio de toda la
+estancia en la moneda del viaje o en € + «Ya está pagado». Pagado = gasto enlazado con id fijo `hotel-<id del hotel>`
+(`idGastoDeHotel`/`hotelDelGasto`/`gastoDelHotel` en src/domain/gastos.ts; mismo id en los dos móviles, así no se duplica):
+se crea, se actualiza (conserva fecha, categoría, notas, ticket y sus euros si el importe no cambia) o se quita al guardar,
+cancelar o borrar el hotel (`useGastoDelHotel` en AlojamientosPage). Sin pagar = «Por pagar en los hoteles» en Presupuesto
+(`hotelesPorPagar`, con el cambio de hoy) y en la ficha del hotel con botón «Pagado». El gasto de un hotel no se borra ni se
+le cambia nombre/precio desde el gasto (se hace en el hotel). Cancelado = no cuenta.
+Enlazar gastos de hotel ya apuntados a mano: en el formulario del hotel (si aún no tiene su gasto), pastillas con los gastos
+sueltos de la categoría Alojamiento; al tocar uno se rellenan precio/moneda/pagado y al guardar pasa a ser `hotel-<id>`
+(conserva día, notas, ticket y euros) y el suelto se borra (`useGastoDelHotel(..., enlazar)`).
+
+Diario (migración 0010, tabla `diario`: id = fecha como en `dias`, `texto`; IndexedDB v5 → vuelve a pedir todo): un texto
+compartido por día, en tabla aparte para no pisar el plan del día. `TarjetaDiario` (src/ui/componentes/Diario.tsx; guarda solo
+lo tecleado, a los 700 ms, con «Listo» y al salir; texto vacío = se borra): en cada día de hoy hacia atrás (`sePuedeEscribir`)
+y en Hoy durante el viaje desde las 18:00 el de hoy, y hasta las 12:00 el de ayer si estaba sin escribir al abrir
+(`diarioEnHoy`, src/domain/diario.ts). Lectura: `/diario` (DiarioPage, con la foto del día), enlace en el Álbum y en el resumen
+del viaje (solo si hay algo). Excel: hoja «Diario». La foto sigue siendo la del día (una). Nada nuevo en la barra ni en Más.

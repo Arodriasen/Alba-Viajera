@@ -1,6 +1,8 @@
 /** Presupuesto y gastos del viaje (TypeScript puro). */
 
 import type { Fecha } from './config';
+import type { Alojamiento } from './viaje';
+import { sinViaje } from './viajes';
 
 /** Código ISO 4217 de la moneda (EUR, JPY, USD…). */
 export type Moneda = string;
@@ -211,3 +213,66 @@ export function enMoneda(n: number, moneda: Moneda): string {
 }
 
 export const importeEnSuMoneda = (g: Pick<Gasto, 'importe' | 'moneda'>) => enMoneda(g.importe, g.moneda);
+
+// ── Precio de los hoteles ────────────────────────────────────────────────────────────────────────
+// Un hotel con precio y pagado cuenta como un gasto más del presupuesto: la fila `hotel-<id>` de
+// gastos (el mismo id en los dos móviles, así nunca sale dos veces). Sin pagar, sale "por pagar".
+
+const PREFIJO_HOTEL = 'hotel-';
+
+/** Id del gasto que lleva el precio de un hotel pagado. */
+export const idGastoDeHotel = (alojamientoId: string) => `${PREFIJO_HOTEL}${sinViaje(alojamientoId)}`;
+/** El id del hotel de un gasto que viene de un hotel (o undefined si es un gasto normal). */
+export const hotelDelGasto = (gastoId: string) => (sinViaje(gastoId).startsWith(PREFIJO_HOTEL) ? sinViaje(gastoId).slice(PREFIJO_HOTEL.length) : undefined);
+
+/** Un hotel con precio que no está cancelado (los cancelados no cuentan). */
+export const hotelConPrecio = (a: Alojamiento) => a.estado !== 'cancelado' && (a.precio ?? 0) > 0;
+
+/**
+ * El gasto de un hotel pagado (o undefined si no debe haberlo: sin precio, sin pagar o cancelado). Conserva
+ * del gasto que ya hubiera la fecha, la categoría, las notas, el Tax Free y la foto; y sus euros si el
+ * importe no ha cambiado (así no baila con el cambio del día).
+ */
+export function gastoDelHotel(
+  a: Alojamiento,
+  o: { existente?: Gasto; porEuro: number; hoy: Fecha; categorias: Categoria[] },
+): Gasto | undefined {
+  if (!hotelConPrecio(a) || !a.pagado) return undefined;
+  const moneda = a.moneda ?? 'EUR';
+  const importe = a.precio!;
+  const e = o.existente;
+  const mismo = e && e.importe === importe && e.moneda === moneda;
+  const cat = o.categorias.includes('alojamiento') ? 'alojamiento' : o.categorias.includes('otros') ? 'otros' : (o.categorias[0] ?? 'otros');
+  return {
+    id: idGastoDeHotel(a.id),
+    concepto: a.nombre.trim(),
+    categoria: e?.categoria ?? cat,
+    importe,
+    moneda,
+    euros: mismo ? e.euros : aEuros(importe, moneda, o.porEuro),
+    fecha: e?.fecha ?? o.hoy,
+    taxFree: e?.taxFree ?? false,
+    notas: e?.notas,
+    foto: e?.foto,
+  };
+}
+
+export interface HotelPorPagar {
+  alojamiento: Alojamiento;
+  importe: number;
+  moneda: Moneda;
+  /** Con el cambio de hoy (undefined si no hay cambio para esa moneda). */
+  euros?: number;
+}
+
+/** Los hoteles con precio que aún se pagan allí, por fecha de llegada. */
+export function hotelesPorPagar(alojamientos: Alojamiento[], porEuro: (m: Moneda) => number | undefined): HotelPorPagar[] {
+  return alojamientos
+    .filter((a) => hotelConPrecio(a) && !a.pagado)
+    .sort((a, b) => (a.entrada ?? '9').localeCompare(b.entrada ?? '9'))
+    .map((a) => {
+      const moneda = a.moneda ?? 'EUR';
+      const c = moneda === 'EUR' ? 1 : porEuro(moneda);
+      return { alojamiento: a, importe: a.precio!, moneda, euros: c && c > 0 ? aEuros(a.precio!, moneda, c) : undefined };
+    });
+}

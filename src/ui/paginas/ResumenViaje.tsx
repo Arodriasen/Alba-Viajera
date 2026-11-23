@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { EnlaceDiario } from './DiarioPage';
 
 import { tiene } from '@/domain/config';
 import { euros } from '@/domain/gastos';
@@ -138,6 +139,7 @@ export function ResumenViaje() {
             Ver el álbum
           </Link>
         )}
+        <EnlaceDiario className="boton claro" texto="Leer el diario" />
         <Link to="/viaje" className="boton claro">
           Ver el viaje día a día
         </Link>

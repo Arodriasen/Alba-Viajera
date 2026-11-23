@@ -3,8 +3,8 @@
  * formato que en el servidor, más `pendiente` (falta subirla).
  */
 
-export type Tabla = 'dias' | 'alojamientos' | 'reservas' | 'trayectos' | 'atracciones' | 'gastos' | 'ajustes' | 'elementos';
-export const TABLAS: Tabla[] = ['dias', 'alojamientos', 'reservas', 'trayectos', 'atracciones', 'gastos', 'ajustes', 'elementos'];
+export type Tabla = 'dias' | 'alojamientos' | 'reservas' | 'trayectos' | 'atracciones' | 'gastos' | 'ajustes' | 'elementos' | 'diario';
+export const TABLAS: Tabla[] = ['dias', 'alojamientos', 'reservas', 'trayectos', 'atracciones', 'gastos', 'ajustes', 'elementos', 'diario'];
 
 export type Valor = string | number | null;
 

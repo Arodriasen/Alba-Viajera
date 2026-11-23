@@ -3,6 +3,8 @@ import {
   ArrowLeft,
   ArrowLeftRight,
   ArrowUpDown,
+  LogOut,
+  NotebookPen,
   FileSpreadsheet,
   BadgePercent,
   BedDouble,
@@ -115,6 +117,7 @@ const ICONOS = {
   recibo: Receipt,
   conversor: ArrowLeftRight,
   intercambiar: ArrowUpDown,
+  salir: LogOut,
   excel: FileSpreadsheet,
   taxFree: BadgePercent,
   vuelos: Plane,
@@ -139,6 +142,7 @@ const ICONOS = {
   viajes: Luggage,
   equipaje: Luggage,
   lista: ListChecks,
+  diario: NotebookPen,
   subir: ChevronUp,
   bajar: ChevronDown,
   /** Parar el audio. */
@@ -167,6 +171,11 @@ const ICONOS = {
 export type NombreIcono = keyof typeof ICONOS;
 
 export function Icono({ nombre, tamano = 22 }: { nombre: NombreIcono; tamano?: number }) {
-  const Componente = ICONOS[nombre];
+  const Componente = ICONOS[nombre] as LucideIcon | undefined;
+  // Un nombre que no está (p. ej. guardado en datos antiguos) no debe tumbar la pantalla: hueco y aviso.
+  if (!Componente) {
+    console.warn(`Icono desconocido: «${String(nombre)}»`);
+    return <span className="icono" aria-hidden="true" style={{ display: 'inline-block', width: tamano, height: tamano }} />;
+  }
   return <Componente size={tamano} strokeWidth={1.9} absoluteStrokeWidth={false} aria-hidden="true" className="icono" />;
 }

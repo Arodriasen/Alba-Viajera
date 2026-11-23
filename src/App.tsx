@@ -7,6 +7,7 @@ import { EditarElementoPage, ListaPage } from './ui/paginas/ListasPage';
 import { NuevoViajePage, ViajesPage } from './ui/paginas/ViajesPage';
 import { AjustesPage } from './ui/paginas/AjustesPage';
 import { AlbumPage } from './ui/paginas/AlbumPage';
+import { DiarioPage } from './ui/paginas/DiarioPage';
 import { AlojamientoPage, AlojamientosPage, EditarAlojamientoPage } from './ui/paginas/AlojamientosPage';
 import { ConversorPage } from './ui/paginas/ConversorPage';
 import { EditarConsejosPage } from './ui/paginas/ConsejosPage';
@@ -30,10 +31,10 @@ const PESTANAS: { ruta: string; texto: string; icono: NombreIcono }[] = [
 ];
 
 /** Pantallas a las que se llega desde "Más" (con ellas abiertas, "Más" sale marcada). */
-const DE_MAS = ['/mas', '/reserva', '/gasto', '/presupuesto', '/taxfree', '/parque', '/atraccion', '/album', '/ajustes', '/tiempo', '/avisos', '/frase', '/lista', '/elemento'];
+const DE_MAS = ['/mas', '/reserva', '/gasto', '/presupuesto', '/taxfree', '/parque', '/atraccion', '/album', '/diario', '/ajustes', '/tiempo', '/avisos', '/frase', '/lista', '/elemento'];
 /** La barra se ve en las pantallas principales (no en los formularios). */
 const conPestanas = (ruta: string) =>
-  ['/hoy', '/viaje', '/hotel', '/mas', '/reservas', '/gastos', '/taxfree', '/album', '/tiempo', '/avisos'].includes(ruta) || /^\/dia\/[\d-]+$/.test(ruta) || /^\/parque\/\w+$/.test(ruta) || /^\/frases\/\w+$/.test(ruta) || /^\/lista\/[\w-]+$/.test(ruta);
+  ['/hoy', '/viaje', '/hotel', '/mas', '/reservas', '/gastos', '/taxfree', '/album', '/diario', '/tiempo', '/avisos'].includes(ruta) || /^\/dia\/[\d-]+$/.test(ruta) || /^\/parque\/\w+$/.test(ruta) || /^\/frases\/\w+$/.test(ruta) || /^\/lista\/[\w-]+$/.test(ruta);
 const activa = (p: string, ruta: string) =>
   p === '/hoy' ? ruta === '/hoy' : p === '/viaje' ? ruta === '/viaje' || ruta.startsWith('/dia/') : p === '/hotel' ? ruta.startsWith('/hotel') || ruta.startsWith('/alojamiento') : DE_MAS.some((d) => ruta.startsWith(d));
 
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="/elemento/:id" element={<EditarElementoPage />} />
         <Route path="/viaje" element={<ViajePage />} />
         <Route path="/album" element={<AlbumPage />} />
+        <Route path="/diario" element={<DiarioPage />} />
         <Route path="/ajustes" element={<AjustesPage />} />
         <Route path="/gastos" element={<GastosPage />} />
         <Route path="/presupuesto" element={<EditarPresupuestoPage />} />

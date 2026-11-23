@@ -3,8 +3,8 @@ import { openDB, type IDBPDatabase } from 'idb';
 import { TABLAS, type AlmacenLocal, type FilaLocal, type FotoLocal, type Tabla } from './AlmacenLocal';
 
 const NOMBRE = 'albaviajera';
-/** 2: atracciones (parques con Alba). 3: gastos. 4: elementos (listas propias de cada viaje). */
-const VERSION = 4;
+/** 2: atracciones (parques con Alba). 3: gastos. 4: elementos (listas propias de cada viaje). 5: diario. */
+const VERSION = 5;
 
 export class AlmacenIndexedDb implements AlmacenLocal {
   private constructor(private readonly db: IDBPDatabase) {}
@@ -17,7 +17,7 @@ export class AlmacenIndexedDb implements AlmacenLocal {
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
         // Una tabla nueva: lo que el otro móvil ya hubiera creado en ella quedó "atrás" en la sincronización.
         // Se vuelve a pedir todo (lo pendiente de aquí no se pierde: gana si es más nuevo).
-        if (antes > 0 && antes < 4) void tx.objectStore('meta').put(0, 'sync.desde');
+        if (antes > 0 && antes < VERSION) void tx.objectStore('meta').put(0, 'sync.desde');
         if (!db.objectStoreNames.contains('fotos')) db.createObjectStore('fotos', { keyPath: 'nombre' }).createIndex('estado', 'estado');
       },
     });

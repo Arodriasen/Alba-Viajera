@@ -51,6 +51,11 @@ export const FilaAlojamiento = z.object({
   estado: z.enum(['reservado', 'pendiente', 'cancelar', 'cancelado']),
   notas: opcional(texto(10_000)),
   enlace: opcional(texto(2000)),
+  /** Lo que cuesta, en `moneda` (ISO 4217). */
+  precio: opcional(z.number().nonnegative().max(100_000_000)),
+  moneda: opcional(z.string().regex(/^[A-Z]{3}$/)),
+  /** 1 = ya pagado (cuenta como gasto: fila `hotel-<id>` de gastos); 0 o null = se paga en el hotel. */
+  pagado: opcional(z.union([z.literal(0), z.literal(1)])),
   ...comun,
 });
 
@@ -140,6 +145,13 @@ export const FilaElemento = z.object({
   ...comun,
 });
 
+/** El diario de un día: un texto compartido. El id es la fecha (con el viaje delante salvo en Japón), como en `dias`. */
+export const FilaDiario = z.object({
+  id: z.string().regex(/^([a-z0-9]{1,20}:)?\d{4}-\d{2}-\d{2}$/),
+  texto: texto(20_000),
+  ...comun,
+});
+
 export const FilaAjuste = z.object({
   id,
   valor: texto(20_000),
@@ -155,6 +167,7 @@ export const TABLAS = {
   gastos: FilaGasto,
   ajustes: FilaAjuste,
   elementos: FilaElemento,
+  diario: FilaDiario,
 } as const;
 
 export type NombreTabla = keyof typeof TABLAS;
@@ -189,6 +202,7 @@ const VACIAS: Record<string, string | number> = {
   tax_free: 0,
   lista: '',
   hecho: 0,
+  texto: '',
 };
 
 /**

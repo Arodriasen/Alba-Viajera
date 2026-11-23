@@ -37,6 +37,11 @@ export interface Alojamiento {
   estado: EstadoAlojamiento;
   notas?: string;
   enlace?: string;
+  /** Lo que cuesta, en `moneda` (por defecto euros). */
+  precio?: number;
+  moneda?: string;
+  /** Ya pagado: cuenta como gasto del presupuesto. Si no, se paga en el hotel. */
+  pagado?: boolean;
 }
 
 export type EstadoReserva = 'pendiente' | 'comprada' | 'descartada';

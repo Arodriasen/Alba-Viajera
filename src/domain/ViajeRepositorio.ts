@@ -1,5 +1,6 @@
 import type { ConfigViaje } from './config';
 import type { Consejos } from './consejos';
+import type { EntradaDiario } from './diario';
 import type { Frase, TraduccionSerie } from './frases';
 import type { Elemento } from './listas';
 import type { Gasto, Presupuesto } from './gastos';
@@ -14,6 +15,12 @@ export interface ViajeRepositorio {
   dias(): Promise<Dia[]>;
   dia(fecha: Fecha): Promise<Dia | undefined>;
   guardarDia(d: Dia): Promise<void>;
+
+  /** El diario de todos los días escritos, por fecha. */
+  diarios(): Promise<EntradaDiario[]>;
+  diario(fecha: Fecha): Promise<EntradaDiario | undefined>;
+  /** Texto vacío = se borra la entrada. */
+  guardarDiario(fecha: Fecha, texto: string): Promise<void>;
 
   alojamientos(): Promise<Alojamiento[]>;
   alojamiento(id: string): Promise<Alojamiento | undefined>;

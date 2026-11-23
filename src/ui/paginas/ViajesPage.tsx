@@ -9,6 +9,7 @@ import { ciudadesDelPais } from '@/domain/ciudadesPais';
 import { CAPITALES_ESPANA, IDIOMAS, zonaDeSalida } from '@/domain/idiomas';
 import { apartadosDe, apartadosPorDefecto, capitalDe, idiomaDelPais, bandera, paisDe, PAISES, type Apartado } from '@/domain/viajes';
 
+import { cerrarSesion } from '@/infrastructure/api';
 import { useAlba } from '../AlbaViajera';
 import { CampoFecha } from '../componentes/CampoFecha';
 import { PALETA } from '../ciudades';
@@ -65,7 +66,7 @@ export function ViajesPage() {
 
   return (
     <>
-      <Cabecera titulo="Alba Viajera" />
+      <Cabecera titulo="Alba Viajera" despues={<BotonCerrarSesion />} />
       <main className="contenido">
         {proximos.length === 0 && hechos.length === 0 && <p className="vacio">Aún no hay ningún viaje. ¡A planear el primero!</p>}
         {proximos.map(tarjeta)}
@@ -80,6 +81,27 @@ export function ViajesPage() {
         )}
       </main>
     </>
+  );
+}
+
+/** Cerrar la sesión de Cloudflare Access (para empezar una sesión nueva, p. ej. justo antes de un viaje). */
+function BotonCerrarSesion() {
+  const { pendientes } = useAlba();
+  const [saliendo, setSaliendo] = useState(false);
+  const salir = () => {
+    const aviso = pendientes
+      ? `Hay ${pendientes} ${pendientes === 1 ? 'cambio' : 'cambios'} sin subir: no se pierden, se subirán al volver a entrar.
+
+`
+      : '';
+    if (!window.confirm(`${aviso}¿Cerrar sesión? Para volver a entrar os pedirá el correo y el código. Lo guardado en este móvil se queda.`)) return;
+    setSaliendo(true);
+    void cerrarSesion();
+  };
+  return (
+    <button className="accion" aria-label="Cerrar sesión" title="Cerrar sesión" disabled={saliendo} onClick={salir}>
+      <Icono nombre="salir" />
+    </button>
   );
 }
 

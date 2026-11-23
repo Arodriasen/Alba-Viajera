@@ -44,6 +44,13 @@ describe('exportar a Excel', () => {
     expect(p.filas.at(-1)![0]).toBe('Total');
   });
 
+  it('el diario va en su hoja, tras el itinerario, solo si hay algo escrito', () => {
+    const hojas = hojasDelViaje(datos({ diario: [{ fecha: CONFIG_POR_DEFECTO.inicio, texto: 'Alba durmió todo el vuelo  ' }] }));
+    expect(hojas.map((h) => h.nombre).slice(0, 3)).toEqual(['Resumen', 'Itinerario', 'Diario']);
+    expect(hojas.find((h) => h.nombre === 'Diario')!.filas).toEqual([[CONFIG_POR_DEFECTO.inicio, 'Salida', 'Alba durmió todo el vuelo']]);
+    expect(hojasDelViaje(datos({ diario: [] })).some((h) => h.nombre === 'Diario')).toBe(false);
+  });
+
   it('cada lista propia es una hoja', () => {
     const config = { ...CONFIG_POR_DEFECTO, listas: [{ id: 'l', nombre: 'Compras: friki/varias', icono: 'lista', color: '#000000' }] } as DatosViaje['config'];
     const hojas = hojasDelViaje(datos({ config, elementos: [{ id: 'e', lista: 'l', nombre: 'Pocket Pikachu', hecho: false, precioMin: 3000, orden: 0 }] }));

@@ -1,4 +1,5 @@
-import { aEuros, deEuros, importesRapidos, enMoneda, euros, eurosExactos, gastadoEl, yenes, leerPresupuesto, PRESUPUESTO_VACIO, resumir, type Gasto, type Presupuesto } from './gastos';
+import { aEuros, deEuros, gastoDelHotel, hotelDelGasto, hotelesPorPagar, idGastoDeHotel, importesRapidos, enMoneda, euros, eurosExactos, gastadoEl, yenes, leerPresupuesto, PRESUPUESTO_VACIO, resumir, type Gasto, type Presupuesto } from './gastos';
+import type { Alojamiento } from './viaje';
 
 const g = (id: string, extra: Partial<Gasto>): Gasto => ({
   id,
@@ -101,5 +102,67 @@ describe('conversor', () => {
     expect(importesRapidos('USD', 1.08)).toEqual([5, 11, 22, 54, 110]);
     expect(importesRapidos('KRW', 1450)).toEqual([7300, 15000, 29000, 73000, 150000]);
     expect(importesRapidos('XXX', undefined)).toEqual([]);
+  });
+});
+
+describe('precio de los hoteles', () => {
+  const hotel = (extra: Partial<Alojamiento>): Alojamiento => ({ id: 'aloj-tavinos', nombre: 'Hotel Tavinos', estado: 'reservado', entrada: '2027-01-12', ...extra });
+  const cats = ['vuelos', 'alojamiento', 'otros'];
+
+  it('el gasto va enlazado por id al hotel (también con el viaje delante)', () => {
+    expect(idGastoDeHotel('aloj-tavinos')).toBe('hotel-aloj-tavinos');
+    expect(idGastoDeHotel('v1abc:123')).toBe('hotel-123');
+    expect(hotelDelGasto('v1abc:hotel-123')).toBe('123');
+    expect(hotelDelGasto('hotel-aloj-tavinos')).toBe('aloj-tavinos');
+    expect(hotelDelGasto('gasto-vuelos')).toBeUndefined();
+  });
+
+  it('pagado: un gasto en Alojamiento pasado a euros', () => {
+    const g = gastoDelHotel(hotel({ precio: 90000, moneda: 'JPY', pagado: true }), { porEuro: 180, hoy: '2026-11-21', categorias: cats })!;
+    expect(g).toMatchObject({ id: 'hotel-aloj-tavinos', concepto: 'Hotel Tavinos', categoria: 'alojamiento', importe: 90000, moneda: 'JPY', fecha: '2026-11-21' });
+    expect(g.euros).toBeCloseTo(500, 5);
+  });
+
+  it('sin precio, sin pagar o cancelado: no hay gasto', () => {
+    const o = { porEuro: 1, hoy: '2026-11-21', categorias: cats };
+    expect(gastoDelHotel(hotel({ pagado: true }), o)).toBeUndefined();
+    expect(gastoDelHotel(hotel({ precio: 300, pagado: false }), o)).toBeUndefined();
+    expect(gastoDelHotel(hotel({ precio: 300, pagado: true, estado: 'cancelado' }), o)).toBeUndefined();
+  });
+
+  it('al volver a guardar conserva lo del gasto y sus euros si el importe no cambia', () => {
+    const existente = g('hotel-aloj-tavinos', { categoria: 'otros', importe: 90000, moneda: 'JPY', euros: 520, fecha: '2026-10-01', notas: 'con tarjeta', foto: 't.jpg' });
+    const igual = gastoDelHotel(hotel({ precio: 90000, moneda: 'JPY', pagado: true, nombre: 'Tavinos Asakusa' }), { existente, porEuro: 180, hoy: '2026-11-21', categorias: cats })!;
+    expect(igual).toMatchObject({ concepto: 'Tavinos Asakusa', categoria: 'otros', euros: 520, fecha: '2026-10-01', notas: 'con tarjeta', foto: 't.jpg' });
+    const otro = gastoDelHotel(hotel({ precio: 72000, moneda: 'JPY', pagado: true }), { existente, porEuro: 180, hoy: '2026-11-21', categorias: cats })!;
+    expect(otro.euros).toBeCloseTo(400, 5);
+  });
+
+  it('enlazar un gasto apuntado a mano: pasa a tener el id del hotel y conserva lo suyo', () => {
+    const suelto = g('abc-123', { concepto: 'Tavinos (Booking)', categoria: 'alojamiento', importe: 1040, moneda: 'EUR', euros: 1040, fecha: '2026-07-02', foto: 'r.jpg' });
+    const r = gastoDelHotel(hotel({ precio: 1040, moneda: 'EUR', pagado: true }), { existente: suelto, porEuro: 1, hoy: '2026-11-21', categorias: cats })!;
+    expect(r).toMatchObject({ id: 'hotel-aloj-tavinos', concepto: 'Hotel Tavinos', euros: 1040, fecha: '2026-07-02', foto: 'r.jpg' });
+  });
+
+  it('sin categoría Alojamiento va a Otros', () => {
+    expect(gastoDelHotel(hotel({ precio: 300, pagado: true }), { porEuro: 1, hoy: '2026-11-21', categorias: ['comida', 'otros'] })!.categoria).toBe('otros');
+  });
+
+  it('por pagar: los que se pagan allí, por fecha y con el cambio de hoy', () => {
+    const r = hotelesPorPagar(
+      [
+        hotel({ id: 'b', entrada: '2027-01-28', precio: 54000, moneda: 'JPY' }),
+        hotel({ id: 'a', entrada: '2027-01-22', precio: 300 }),
+        hotel({ id: 'pagado', precio: 500, pagado: true }),
+        hotel({ id: 'cancelado', precio: 500, estado: 'cancelado' }),
+        hotel({ id: 'sin-precio' }),
+        hotel({ id: 'usd', entrada: '2027-02-01', precio: 100, moneda: 'USD' }),
+      ],
+      (m) => (m === 'JPY' ? 180 : undefined),
+    );
+    expect(r.map((x) => x.alojamiento.id)).toEqual(['a', 'b', 'usd']);
+    expect(r[0].euros).toBe(300);
+    expect(r[1].euros).toBeCloseTo(300, 5);
+    expect(r[2].euros).toBeUndefined();
   });
 });

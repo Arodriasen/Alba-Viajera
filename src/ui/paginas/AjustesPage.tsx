@@ -330,6 +330,7 @@ export function ExportarExcel() {
         gastos: await viaje.gastos(),
         presupuesto: await viaje.presupuesto(),
         elementos: await viaje.elementos(),
+        diario: await viaje.diarios(),
       });
       await guardarArchivo(await aExcel(hojas), nombreDeArchivo(config.destino, hoy));
       setEstado('hecho');

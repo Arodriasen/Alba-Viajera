@@ -37,6 +37,9 @@ function aAlojamiento(f: FilaLocal): Alojamiento {
     estado: (str(f.estado) ?? 'pendiente') as EstadoAlojamiento,
     notas: str(f.notas),
     enlace: str(f.enlace),
+    precio: num(f.precio),
+    moneda: str(f.moneda),
+    pagado: f.pagado === 1,
   };
 }
 
@@ -179,6 +182,22 @@ export class ViajeLocal implements ViajeRepositorio {
     });
   }
 
+  async diarios() {
+    return (await this.vivas('diario'))
+      .map((f) => ({ fecha: sinViaje(f.id), texto: String(f.texto ?? '') }))
+      .filter((e) => e.texto.trim())
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+  async diario(fecha: string) {
+    const f = await this.viva('diario', fecha);
+    return f && String(f.texto ?? '').trim() ? { fecha, texto: String(f.texto) } : undefined;
+  }
+  async guardarDiario(fecha: string, texto: string) {
+    if (texto.trim()) return this.escribir('diario', { id: fecha, texto: texto.replace(/\s+$/, '') });
+    // Vacío: fuera (si existía).
+    if (await this.viva('diario', fecha)) await this.borrar('diario', fecha);
+  }
+
   async alojamientos() {
     return (await this.vivas('alojamientos')).map(aAlojamiento);
   }
@@ -200,6 +219,9 @@ export class ViajeLocal implements ViajeRepositorio {
       estado: a.estado,
       notas: nulo(a.notas),
       enlace: nulo(a.enlace),
+      precio: a.precio ?? null,
+      moneda: a.precio !== undefined ? (a.moneda ?? 'EUR') : null,
+      pagado: a.precio !== undefined && a.pagado ? 1 : 0,
     });
   }
   borrarAlojamiento(id: string) {

@@ -26,6 +26,7 @@ export function Cabecera({
   iconoAtras = 'atras',
   textoAtras = 'Atrás',
   children,
+  despues,
 }: {
   titulo: string;
   atras?: boolean | string;
@@ -33,6 +34,8 @@ export function Cabecera({
   iconoAtras?: NombreIcono;
   textoAtras?: string;
   children?: ReactNode;
+  /** Lo que va a la derecha del punto de sincronización (cerrar sesión, en la lista de viajes). */
+  despues?: ReactNode;
 }) {
   const navegar = useNavigate();
   return (
@@ -49,6 +52,7 @@ export function Cabecera({
       <h1>{titulo}</h1>
       {children}
       <IndicadorSync />
+      {despues}
     </header>
   );
 }
@@ -73,7 +77,8 @@ export function IndicadorSync() {
       className={`sync ${clase}`}
       title={titulo}
       aria-label={titulo}
-      onClick={() => (estado.tipo === 'sesionCaducada' ? location.reload() : sincronizarAhora())}
+      // Para entrar hay que pasar por Access: /api/entrar no sale de la caché del móvil (ver functions/api/entrar.ts).
+      onClick={() => (estado.tipo === 'sesionCaducada' ? location.assign('/api/entrar') : sincronizarAhora())}
     >
       <span className="punto" />
       {texto}

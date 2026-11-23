@@ -6,6 +6,7 @@ import { fechaCorta, fechaLarga, type Dia } from '@/domain/viaje';
 import { useConsulta } from '../AlbaViajera';
 import { Cabecera, Cargando } from '../componentes/comunes';
 import { useUrlFoto, VisorFoto } from '../componentes/FotoDelDia';
+import { EnlaceDiario } from './DiarioPage';
 
 /** Todas las fotos del día, en orden: el álbum del viaje. */
 export function AlbumPage() {
@@ -16,7 +17,9 @@ export function AlbumPage() {
 
   return (
     <>
-      <Cabecera titulo="Álbum" atras="/viaje" />
+      <Cabecera titulo="Álbum" atras="/viaje">
+        <EnlaceDiario />
+      </Cabecera>
       <main className="contenido">
         {conFoto.length === 0 ? (
           <p className="vacio">

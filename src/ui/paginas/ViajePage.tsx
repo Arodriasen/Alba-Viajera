@@ -29,6 +29,8 @@ import { TarjetaVuelo } from '../componentes/TarjetaVuelo';
 import { Icono } from '../componentes/Icono';
 import { CampoCiudad, useGuardarCiudad } from '../componentes/CampoCiudad';
 import { PortadaDia } from '../componentes/PortadaDia';
+import { TarjetaDiario } from '../componentes/Diario';
+import { sePuedeEscribir } from '@/domain/diario';
 
 /** El itinerario: un día por fila. */
 export function ViajePage() {
@@ -254,7 +256,7 @@ function DiaOrganizar({ fecha, dia, hoteles }: { fecha: string; dia: Dia | undef
 
 /** Un día: el plan, sus reservas, sus trayectos y dónde se duerme. */
 export function DiaPage() {
-  const { config } = useAlba();
+  const { config, hoy } = useAlba();
   const { fecha = config.inicio } = useParams();
   const datos = useConsulta(
     async ({ viaje }) => ({
@@ -322,6 +324,8 @@ export function DiaPage() {
           {tiene(config, 'parques') && <EnlaceParque fecha={fecha} />}
 
           {tiene(config, 'album') && <FotoDelDia fecha={fecha} foto={datos.dia?.foto} />}
+
+          {sePuedeEscribir(fecha, hoy) && <TarjetaDiario key={fecha} fecha={fecha} />}
 
           {fecha === config.inicio && <TarjetaVuelo tramo="ida" siHayDatos />}
           {fecha === config.vueltaFecha && <TarjetaVuelo tramo="vuelta" siHayDatos />}

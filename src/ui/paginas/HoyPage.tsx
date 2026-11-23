@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+import { diarioEnHoy } from '@/domain/diario';
+import { TarjetaDiario } from '../componentes/Diario';
 
 import { horaEn } from '@/domain/clima';
 import { tiene } from '@/domain/config';
@@ -164,6 +167,13 @@ function Durante({ fecha, dia, total }: { fecha: Fecha; dia: number; total: numb
     }),
     [fecha],
   );
+  // El diario de ayer sale por la mañana solo si estaba sin escribir al abrir Hoy (así no desaparece
+  // mientras se escribe).
+  const diarioAyer = useConsulta(async ({ viaje }) => ({ vacio: !(await viaje.diario(sumarDias(fecha, -1))) }), [fecha]);
+  const [ayerVacio, setAyerVacio] = useState<boolean>();
+  useEffect(() => {
+    if (diarioAyer && ayerVacio === undefined) setAyerVacio(diarioAyer.vacio);
+  }, [diarioAyer, ayerVacio]);
   if (!datos) return <Cargando />;
 
   const jr = tiene(config, 'jrpass') ? diaJrPass(fecha, config) : undefined;
@@ -178,6 +188,8 @@ function Durante({ fecha, dia, total }: { fecha: Fecha; dia: number; total: numb
   const ultimoTren = ultimoTrenPendiente([datos.ayer, datos.dia], ahora, config);
   const cambioHoy = cambioDeHotel(datos.alojamientos, fecha);
   const cambioManana = cambioDeHotel(datos.alojamientos, manana);
+  const diario = diarioEnHoy(fecha, horaEn(ahora, config.zona), config);
+  const verDiario = diario && (!diario.ayer || ayerVacio === true);
 
   return (
     <>
@@ -262,6 +274,10 @@ function Durante({ fecha, dia, total }: { fecha: Fecha; dia: number; total: numb
       {tiene(config, 'parques') && <EnlaceParque fecha={fecha} />}
 
       {tiene(config, 'album') && <FotoDelDia fecha={fecha} foto={datos.dia?.foto} />}
+
+      {verDiario && (
+        <TarjetaDiario key={diario.fecha} fecha={diario.fecha} titulo={diario.ayer ? `¿Qué tal ayer? · ${fechaCorta(diario.fecha)}` : '¿Qué tal el día?'} />
+      )}
 
       {tiene(config, 'taxfree') && fecha === config.vueltaFecha && <TarjetaTaxFree destacada />}
 
